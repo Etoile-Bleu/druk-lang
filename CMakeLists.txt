@@ -49,6 +49,11 @@ add_library(druk-core STATIC
     src/lexer/token.cpp
     src/lexer/unicode.cpp
     src/lexer/lexer.cpp
+    src/parser/core/parser.cpp
+    src/parser/core/decl.cpp
+    src/parser/core/stmt.cpp
+    src/parser/core/expr.cpp
+    src/parser/core/recovery.cpp
 )
 
 target_include_directories(druk-core PUBLIC

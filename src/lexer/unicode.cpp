@@ -4,7 +4,6 @@
 #include <unicode/unistr.h>
 #include <unicode/utf8.h>
 
-
 namespace druk {
 
 std::string_view StringInterner::intern(std::string_view text) {
@@ -35,7 +34,6 @@ char32_t next_codepoint(std::string_view::const_iterator &it,
     return 0;
 
   UChar32 c;
-  int32_t offset = 0;
 
   // We need to convert iterator to offset for ICU macros, or just handle
   // manually. ICU Macros U8_NEXT expect a raw array. Let's use the ICU macros
