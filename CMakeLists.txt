@@ -48,6 +48,7 @@ add_library(druk-core STATIC
     src/common/error.cpp
     src/lexer/token.cpp
     src/lexer/unicode.cpp
+    src/lexer/lexer.cpp
 )
 
 target_include_directories(druk-core PUBLIC

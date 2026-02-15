@@ -5,6 +5,7 @@ add_executable(druk_tests
     allocator_test.cpp
     token_test.cpp
     interner_test.cpp
+    lexer_test.cpp
 )
 
 target_link_libraries(druk_tests PRIVATE
