@@ -1,7 +1,7 @@
 // Collection opcodes implementation for VM
 // Included directly into vm.cpp run() function
 
-OP_BUILD_ARRAY : {
+case OpCode::BuildArray : {
   {
     uint8_t count = READ_BYTE();
     auto array = std::make_shared<ObjArray>();
@@ -14,10 +14,10 @@ OP_BUILD_ARRAY : {
 
     push(Value(array));
   }
-  DISPATCH();
+  break;
 }
 
-OP_INDEX : {
+case OpCode::Index : {
   {
     Value index_val = pop();
     Value array_val = pop();
@@ -45,10 +45,10 @@ OP_INDEX : {
 
     push(array->elements[static_cast<size_t>(index)]);
   }
-  DISPATCH();
+  break;
 }
 
-OP_INDEX_SET : {
+case OpCode::IndexSet : {
   {
     Value value = pop();
     Value index_val = pop();
@@ -78,10 +78,10 @@ OP_INDEX_SET : {
     array->elements[static_cast<size_t>(index)] = value;
     push(value);
   }
-  DISPATCH();
+  break;
 }
 
-OP_BUILD_STRUCT : {
+case OpCode::BuildStruct : {
   {
     uint8_t field_count = READ_BYTE();
     auto obj = std::make_shared<ObjStruct>();
@@ -103,5 +103,5 @@ OP_BUILD_STRUCT : {
 
     push(Value(obj));
   }
-  DISPATCH();
+  break;
 }

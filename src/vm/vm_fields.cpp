@@ -1,7 +1,7 @@
 // Field access opcodes implementation for VM
 // Included directly into vm.cpp run() function
 
-OP_GET_FIELD: {
+case OpCode::GetField: {
   {
     uint8_t name_index = READ_BYTE();
     Value obj_val = pop();
@@ -32,10 +32,10 @@ OP_GET_FIELD: {
     
     push(it->second);
   }
-  DISPATCH();
+  break;
 }
 
-OP_SET_FIELD: {
+case OpCode::SetField: {
   {
     uint8_t name_index = READ_BYTE();
     Value value = pop();
@@ -61,5 +61,5 @@ OP_SET_FIELD: {
     
     push(value);
   }
-  DISPATCH();
+  break;
 }

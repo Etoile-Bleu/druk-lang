@@ -8,15 +8,22 @@
 #include "druk/semantic/analyzer.hpp"
 #include "druk/vm/vm.hpp"
 
-#include <benchmark/benchmark.h>
+#ifdef DRUK_HAVE_LLVM
+#include "druk/codegen/llvm_jit.hpp"
+#endif
+
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <string>
 
 namespace {
 
-constexpr int64_t kN = 10000000; // 10 million
+constexpr int64_t kN = 100; // 10 million
+constexpr int kRuns = 5;
 
 std::string read_file(const std::filesystem::path &path) {
   std::ifstream file(path, std::ios::binary);
@@ -55,9 +62,6 @@ struct DrukProgram {
       return;
     }
 
-    // Set globals for the benchmark if needed, or constant fold.
-    // The benchmark uses a hardcoded 10M in the .druk file.
-
     druk::SymbolTable symtab;
     druk::SemanticAnalyzer analyzer(symtab, errors, interner, source);
     analyzer.analyze(statements);
@@ -82,12 +86,7 @@ struct DrukProgram {
   }
 };
 
-DrukProgram &program() {
-  static DrukProgram prog;
-  return prog;
-}
-
-// Ensure the loop is NOT optimized by using volatile or a more complex sum
+// Baseline C++ - using volatile to prevent over-optimization
 int64_t sum_native(int64_t n) {
   volatile int64_t acc = 0;
   for (int64_t i = 0; i < n; ++i) {
@@ -96,30 +95,63 @@ int64_t sum_native(int64_t n) {
   return acc;
 }
 
+double ns_per_op(double seconds, int64_t ops) {
+  return (seconds / static_cast<double>(ops)) * 1e9;
+}
+
+template <typename Fn>
+double measure_best_seconds(Fn &&fn) {
+  double best = std::numeric_limits<double>::max();
+  for (int i = 0; i < kRuns; ++i) {
+    auto start = std::chrono::high_resolution_clock::now();
+    fn();
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    if (elapsed.count() < best) {
+      best = elapsed.count();
+    }
+  }
+  return best;
+}
+
 } // namespace
 
-static void BM_CPP_Sum(benchmark::State &state) {
-  for (auto _ : state) {
-    auto result = sum_native(kN);
-    benchmark::DoNotOptimize(result);
-  }
-  state.SetItemsProcessed(state.iterations() * kN);
-}
-
-static void BM_Druk_Sum(benchmark::State &state) {
-  auto &prog = program();
+int main() {
+  DrukProgram prog;
   if (!prog.ok) {
-    state.SkipWithError(prog.error.c_str());
-    return;
+    std::cerr << "Benchmark setup failed: " << prog.error << "\n";
+    return 1;
   }
 
-  for (auto _ : state) {
-    druk::VM vm;
-    vm.interpret(prog.function);
-    benchmark::DoNotOptimize(vm);
+  std::cout << std::fixed << std::setprecision(2);
+  std::cout << "N=" << kN << " runs=" << kRuns << "\n";
+
+  // C++ baseline
+  auto cpp_seconds = measure_best_seconds([&]() {
+    volatile auto result = sum_native(kN);
+    (void)result;
+  });
+  std::cout << "C++:   ns/op=" << ns_per_op(cpp_seconds, kN) << "\n";
+
+#ifdef DRUK_HAVE_LLVM
+  // Druk JIT (warmup once to compile)
+  druk::JITEngine jit;
+  if (!jit.is_available()) {
+    std::cout << "JIT:   not available\n";
+    return 0;
   }
-  state.SetItemsProcessed(state.iterations() * kN);
+
+  auto warmup = jit.execute(prog.function.get());
+  (void)warmup;
+
+  auto jit_seconds = measure_best_seconds([&]() {
+    auto result = jit.execute(prog.function.get());
+    (void)result;
+  });
+  std::cout << "JIT:   ns/op=" << ns_per_op(jit_seconds, kN) << "\n";
+#else
+  std::cout << "JIT:   not available\n";
+#endif
+
+  return 0;
 }
-
-BENCHMARK(BM_CPP_Sum);
-BENCHMARK(BM_Druk_Sum);

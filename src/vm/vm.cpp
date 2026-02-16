@@ -61,6 +61,7 @@ void VM::set_args(const std::vector<std::string> &args) {
 InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
   stack_top_ = stack_base_;
   frames_.clear();
+  last_result_ = Value();
 
   // Create initial frame for the script/function
   CallFrame frame;
@@ -128,12 +129,6 @@ InterpretResult VM::run() {
 #define READ_CONSTANT() (frame_->function->chunk.constants()[READ_BYTE()])
 #define READ_SHORT() (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 
-#define DISPATCH()                                                             \
-  do {                                                                         \
-    instruction = READ_BYTE();                                                 \
-    goto *dispatch_table[instruction];                                         \
-  } while (false)
-
 #define BINARY_OP(type, op)                                                    \
   do {                                                                         \
     Value *bptr = (stack_top_ - 1);                                            \
@@ -150,70 +145,51 @@ InterpretResult VM::run() {
     ++stack_top_;                                                              \
   } while (false)
 
-  static void *dispatch_table[] = {
-      &&OP_RETURN,       &&OP_CONSTANT,      &&OP_NIL,           &&OP_TRUE,
-      &&OP_FALSE,        &&OP_POP,           &&OP_GET_LOCAL,     &&OP_SET_LOCAL,
-      &&OP_GET_GLOBAL,   &&OP_DEFINE_GLOBAL, &&OP_SET_GLOBAL,    &&OP_EQUAL,
-      &&OP_GREATER,      &&OP_LESS,          &&OP_ADD,           &&OP_SUBTRACT,
-      &&OP_MULTIPLY,     &&OP_DIVIDE,        &&OP_NOT,           &&OP_NEGATE,
-      &&OP_PRINT,        &&OP_JUMP,          &&OP_JUMP_IF_FALSE, &&OP_LOOP,
-      &&OP_CALL,         &&OP_BUILD_ARRAY,   &&OP_INDEX,         &&OP_INDEX_SET,
-      &&OP_BUILD_STRUCT, &&OP_GET_FIELD,     &&OP_SET_FIELD,     &&OP_LEN,
-      &&OP_PUSH,         &&OP_POP_ARRAY,     &&OP_TYPEOF,        &&OP_KEYS,
-      &&OP_VALUES,       &&OP_CONTAINS,      &&OP_INPUT,
-  };
+  // Main dispatch loop with switch (works on all compilers)
+  for (;;) {
+    OpCode instruction = static_cast<OpCode>(READ_BYTE());
+    
+    switch (instruction) {
+    case OpCode::Return: {
+      Value result = pop();
+      Value *return_slots = frame_->slots;
+      frames_.pop_back();
+      if (frames_.empty()) {
+        last_result_ = result;
+        stack_top_ = stack_base_;
+        push(std::move(result));
+        return InterpretResult::Ok;
+      }
 
-  uint8_t instruction;
-  DISPATCH();
+      // Update frame_ BEFORE accessing it
+      frame_ = &frames_.back();
 
-OP_RETURN: {
-  Value result = pop();
-  Value *return_slots = frame_->slots;
-  frames_.pop_back();
-  if (frames_.empty()) {
-    stack_top_ = stack_base_;
-    push(std::move(result));
-    return InterpretResult::Ok;
-  }
+      stack_top_ = return_slots;
+      push(std::move(result));
 
-  // Update frame_ BEFORE accessing it
-  frame_ = &frames_.back();
+      ip = frame_->ip;
+      break;
+    }
 
-  stack_top_ = return_slots;
-  push(std::move(result));
+    case OpCode::Constant: { push(READ_CONSTANT()); break; }
+    case OpCode::Nil: { push(Value()); break; }
+    case OpCode::True: { push(Value(true)); break; }
+    case OpCode::False: { push(Value(false)); break; }
+    case OpCode::Pop: { pop(); break; }
 
-  ip = frame_->ip;
-}
-  DISPATCH();
-
-OP_CONSTANT: { push(READ_CONSTANT()); }
-  DISPATCH();
-
-OP_NIL: { push(Value()); }
-  DISPATCH();
-
-OP_TRUE: { push(Value(true)); }
-  DISPATCH();
-
-OP_FALSE: { push(Value(false)); }
-  DISPATCH();
-
-OP_POP: { pop(); }
-  DISPATCH();
-
-OP_GET_LOCAL: {
+    case OpCode::GetLocal: {
   uint8_t slot = READ_BYTE();
   push(frame_->slots[slot]);
-}
-  DISPATCH();
+      break;
+    }
 
-OP_SET_LOCAL: {
+    case OpCode::SetLocal: {
   uint8_t slot = READ_BYTE();
   frame_->slots[slot] = peek(0);
-}
-  DISPATCH();
+      break;
+    }
 
-OP_GET_GLOBAL: {
+    case OpCode::GetGlobal: {
   Value name_val = READ_CONSTANT();
   std::string_view name = name_val.as_string();
   if (global_cache_.slot && global_cache_.version == globals_version_ &&
@@ -232,10 +208,10 @@ OP_GET_GLOBAL: {
     global_cache_.version = globals_version_;
     push(it->second);
   }
-}
-  DISPATCH();
+      break;
+    }
 
-OP_DEFINE_GLOBAL: {
+    case OpCode::DefineGlobal: {
   Value name_val = READ_CONSTANT();
   std::string_view name = name_val.as_string();
   Value value = pop();
@@ -252,10 +228,10 @@ OP_DEFINE_GLOBAL: {
   global_cache_.name = name;
   global_cache_.slot = &it->second;
   global_cache_.version = globals_version_;
-}
-  DISPATCH();
+      break;
+    }
 
-OP_SET_GLOBAL: {
+    case OpCode::SetGlobal: {
   Value name_val = READ_CONSTANT();
   std::string_view name = name_val.as_string();
   if (global_cache_.slot && global_cache_.version == globals_version_ &&
@@ -274,32 +250,23 @@ OP_SET_GLOBAL: {
     global_cache_.slot = &it->second;
     global_cache_.version = globals_version_;
   }
-}
-  DISPATCH();
+      break;
+    }
 
-OP_EQUAL: {
+    case OpCode::Equal: {
   Value b = pop();
   Value a = pop();
   push(Value(a == b));
-}
-  DISPATCH();
+      break;
+    }
 
-OP_GREATER: { BINARY_OP(bool, >); }
-  DISPATCH();
+    case OpCode::Greater: { BINARY_OP(bool, >); break; }
+    case OpCode::Less: { BINARY_OP(bool, <); break; }
+    case OpCode::Add: { BINARY_OP(int64_t, +); break; }
+    case OpCode::Subtract: { BINARY_OP(int64_t, -); break; }
+    case OpCode::Multiply: { BINARY_OP(int64_t, *); break; }
 
-OP_LESS: { BINARY_OP(bool, <); }
-  DISPATCH();
-
-OP_ADD: { BINARY_OP(int64_t, +); }
-  DISPATCH();
-
-OP_SUBTRACT: { BINARY_OP(int64_t, -); }
-  DISPATCH();
-
-OP_MULTIPLY: { BINARY_OP(int64_t, *); }
-  DISPATCH();
-
-OP_DIVIDE: {
+    case OpCode::Divide: {
   Value *bptr = (stack_top_ - 1);
   Value *aptr = (stack_top_ - 2);
   if (!aptr->is_int() || !bptr->is_int()) {
@@ -317,10 +284,10 @@ OP_DIVIDE: {
   stack_top_ -= 2;
   *stack_top_ = Value(a / b);
   ++stack_top_;
-}
-  DISPATCH();
+      break;
+    }
 
-OP_NOT: {
+    case OpCode::Not: {
   Value v = pop();
   if (v.is_bool()) {
     push(Value(!v.as_bool()));
@@ -329,10 +296,10 @@ OP_NOT: {
   } else {
     push(Value(false));
   }
-}
-  DISPATCH();
+      break;
+    }
 
-OP_NEGATE: {
+    case OpCode::Negate: {
   Value *vptr = (stack_top_ - 1);
   if (!vptr->is_int()) {
     frame_->ip = ip;
@@ -343,10 +310,10 @@ OP_NEGATE: {
   --stack_top_;
   *stack_top_ = Value(-v);
   ++stack_top_;
-}
-  DISPATCH();
+      break;
+    }
 
-OP_PRINT: {
+    case OpCode::Print: {
   Value val = pop();
   if (val.is_int()) {
     std::cout << unicode::to_tibetan_numeral(val.as_int()) << "\n";
@@ -363,16 +330,16 @@ OP_PRINT: {
     auto obj = val.as_struct();
     std::cout << "{struct:" << obj->fields.size() << "}\n";
   }
-}
-  DISPATCH();
+      break;
+    }
 
-OP_JUMP: {
+    case OpCode::Jump: {
   uint16_t offset = READ_SHORT();
   ip += offset;
-}
-  DISPATCH();
+      break;
+    }
 
-OP_JUMP_IF_FALSE: {
+    case OpCode::JumpIfFalse: {
   uint16_t offset = READ_SHORT();
   const Value &v = peek(0);
   bool is_false = false;
@@ -383,62 +350,64 @@ OP_JUMP_IF_FALSE: {
 
   if (is_false)
     ip += offset;
-}
-  DISPATCH();
+      break;
+    }
 
-OP_LOOP: {
+    case OpCode::Loop: {
   uint16_t offset = READ_SHORT();
   ip -= offset;
-}
-  DISPATCH();
+      break;
+    }
 
 #include "vm_builtins.cpp"
 #include "vm_collections.cpp"
 #include "vm_fields.cpp"
 
 
-OP_CALL: {
-  uint8_t arg_count = READ_BYTE();
-  const Value &callee = peek(arg_count);
-  if (!callee.is_function()) {
-    frame_->ip = ip;
-    runtime_error("Can only call functions.");
-    return InterpretResult::RuntimeError;
-  }
+    case OpCode::Call: {
+      uint8_t arg_count = READ_BYTE();
+      const Value &callee = peek(arg_count);
+      if (!callee.is_function()) {
+        frame_->ip = ip;
+        runtime_error("Can only call functions.");
+        return InterpretResult::RuntimeError;
+      }
 
-  std::shared_ptr<ObjFunction> function = callee.as_function();
+      std::shared_ptr<ObjFunction> function = callee.as_function();
 
-  if (static_cast<int>(arg_count) != function->arity) {
-    frame_->ip = ip;
-    runtime_error("Expected %d arguments but got %d.", function->arity,
-                  static_cast<int>(arg_count));
-    return InterpretResult::RuntimeError;
-  }
+      if (static_cast<int>(arg_count) != function->arity) {
+        frame_->ip = ip;
+        runtime_error("Expected %d arguments but got %d.", function->arity,
+                      static_cast<int>(arg_count));
+        return InterpretResult::RuntimeError;
+      }
 
-  if (frames_.size() == 64) {
-    frame_->ip = ip;
-    runtime_error("Stack overflow.");
-    return InterpretResult::RuntimeError;
-  }
+      if (frames_.size() == 64) {
+        frame_->ip = ip;
+        runtime_error("Stack overflow.");
+        return InterpretResult::RuntimeError;
+      }
 
-  frame_->ip = ip;
+      frame_->ip = ip;
 
-  CallFrame next_frame;
-  next_frame.function = function.get();
-  next_frame.ip = function->chunk.code().data();
-  next_frame.slots = stack_top_ - arg_count - 1;
+      CallFrame next_frame;
+      next_frame.function = function.get();
+      next_frame.ip = function->chunk.code().data();
+      next_frame.slots = stack_top_ - arg_count - 1;
 
-  frames_.push_back(next_frame);
-  frame_ = &frames_.back();
-  ip = frame_->ip;
-}
-  DISPATCH();
+      frames_.push_back(next_frame);
+      frame_ = &frames_.back();
+      ip = frame_->ip;
+      break;
+    }
+    
+    } // end switch
+  } // end for loop
 
 #undef BINARY_OP
 #undef READ_BYTE
 #undef READ_CONSTANT
 #undef READ_SHORT
-#undef DISPATCH
 }
 
 } // namespace druk

@@ -12,6 +12,11 @@
 #include "druk/semantic/analyzer.hpp"
 #include "druk/vm/vm.hpp"
 
+#ifdef DRUK_HAVE_LLVM
+#include "druk/codegen/llvm_jit.hpp"
+extern "C" void druk_jit_set_args(const char **argv, int32_t argc);
+#endif
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -51,6 +56,38 @@ std::vector<std::string> build_args(int argc, char *argv[], int start_index) {
   return args;
 }
 
+std::vector<std::string> build_args(const std::vector<std::string> &args,
+                                    int start_index) {
+  std::vector<std::string> out;
+  if (start_index < 0 || static_cast<size_t>(start_index) >= args.size()) {
+    return out;
+  }
+  out.reserve(args.size() - static_cast<size_t>(start_index));
+  for (size_t i = static_cast<size_t>(start_index); i < args.size(); ++i) {
+    out.push_back(args[i]);
+  }
+  return out;
+}
+
+std::vector<std::string> filter_args(int argc, char *argv[], bool &debug) {
+  std::vector<std::string> args;
+  args.reserve(static_cast<size_t>(argc));
+  if (argc > 0) {
+    args.emplace_back(argv[0] ? argv[0] : "");
+  }
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i] ? argv[i] : "";
+    if (arg == "--debug") {
+      debug = true;
+      continue;
+    }
+    args.emplace_back(std::move(arg));
+  }
+
+  return args;
+}
+
 } // namespace
 } // namespace druk
 
@@ -61,25 +98,36 @@ int main(int argc, char *argv[]) {
   SetConsoleCP(65001);
 #endif
 
-  if (argc < 2) {
-    std::cout << "Druk Language Compiler v0.1.0\n";
-    std::cout << "Usage: druk [path]                    (Run script)\n";
-    std::cout << "       druk --execute [bytecode]      (Execute bytecode)\n";
-    std::cout << "       druk compile [path] -o [exe]   (Compile to executable)\n";
+  bool debug = false;
+  auto args = druk::filter_args(argc, argv, debug);
+  int arg_count = static_cast<int>(args.size());
+
+  if (arg_count < 2) {
+    std::cout << "Druk Language Compiler v0.2.0\n";
+#ifdef DRUK_HAVE_LLVM
+    std::cout << "  [JIT Enabled] LLVM " << LLVM_VERSION_STRING << "\n";
+#else
+    std::cout << "  [VM Only] No JIT support\n";
+#endif
+    std::cout << "\nUsage: druk [path]                    (Run script with JIT)\n";
+    std::cout << "       druk --vm [path]                (Run with VM interpreter)\n";
+    std::cout << "       druk --execute [bytecode]       (Execute bytecode)\n";
+    std::cout << "       druk compile [path] -o [exe]    (Compile to executable)\n";
+    std::cout << "       druk --debug ...                (Enable debug logs)\n";
     return 0;
   }
 
   // Check for bytecode execution mode
-  if (std::string(argv[1]) == "--execute") {
-    if (argc < 3) {
+  if (args[1] == "--execute") {
+    if (arg_count < 3) {
       std::cerr << "Usage: druk --execute [bytecode]\n";
       return 1;
     }
 
     // Load and execute bytecode file
-    std::ifstream bytecode_file(argv[2], std::ios::binary);
+    std::ifstream bytecode_file(args[2], std::ios::binary);
     if (!bytecode_file.is_open()) {
-      std::cerr << "Could not open bytecode file: " << argv[2] << "\n";
+      std::cerr << "Could not open bytecode file: " << args[2] << "\n";
       return 1;
     }
 
@@ -95,35 +143,44 @@ int main(int argc, char *argv[]) {
     auto function = std::make_shared<druk::ObjFunction>();
     function->chunk = std::move(chunk);
     function->name = "script";
-    vm.set_args(druk::build_args(argc, argv, 2));
+    vm.set_args(druk::build_args(args, 2));
     vm.interpret(function);
     return 0;
   }
 
   // Check for compile mode
   bool compile_mode = false;
+  bool force_vm = false; // Force VM instead of JIT
   std::string input_file;
   std::string output_file;
 
-  if (std::string(argv[1]) == "compile") {
-    if (argc < 4) {
+  // Check for --vm flag
+  if (arg_count >= 2 && args[1] == "--vm") {
+    force_vm = true;
+    if (arg_count < 3) {
+      std::cerr << "Usage: druk --vm [path]\n";
+      return 1;
+    }
+    input_file = args[2];
+  } else if (args[1] == "compile") {
+    if (arg_count < 4) {
       std::cerr << "Usage: druk compile [path] -o [exe]\n";
       return 1;
     }
     compile_mode = true;
-    input_file = argv[2];
+    input_file = args[2];
     // argv[3] should be "-o"
-    if (std::string(argv[3]) != "-o") {
+    if (args[3] != "-o") {
       std::cerr << "Expected '-o' flag\n";
       return 1;
     }
-    if (argc < 5) {
+    if (arg_count < 5) {
       std::cerr << "Expected output file after '-o'\n";
       return 1;
     }
-    output_file = argv[4];
+    output_file = args[4];
   } else {
-    input_file = argv[1];
+    input_file = args[1];
     output_file = "";
   }
 
@@ -241,11 +298,59 @@ int main(int argc, char *argv[]) {
   }
 
   // Phase 4: Execution (if not in compile mode)
+#ifdef DRUK_HAVE_LLVM
+  if (debug) {
+    std::cerr << "[Debug] DRUK_HAVE_LLVM is defined\n";
+  }
+  if (!force_vm) {
+    // Try JIT execution first
+    druk::JITEngine jit(debug);
+    if (jit.is_available()) {
+      auto function = std::make_shared<druk::ObjFunction>();
+      function->chunk = chunk;
+      function->name = "script";
+
+      if (jit.can_compile(function.get())) {
+        std::vector<const char *> argv_ptrs;
+        argv_ptrs.reserve(args.size());
+        for (const auto &arg : args) {
+          argv_ptrs.push_back(arg.c_str());
+        }
+        druk_jit_set_args(argv_ptrs.data(), static_cast<int32_t>(argv_ptrs.size()));
+
+        std::cout << "[JIT] Compiling with LLVM optimizations...\n";
+        auto result = jit.execute(function.get());
+
+        if (result.has_value()) {
+          auto stats = jit.get_stats();
+          std::cout << "[JIT] Execution complete\n";
+          std::cout << "      Functions compiled: " << stats.functions_compiled << "\n";
+          std::cout << "      Compile time: " << stats.total_compile_time_ms << " ms\n";
+          std::cout << "      Result: " << result.value() << "\n";
+          return 0;
+        }
+      }
+
+      std::cout << "[Error] JIT compilation failed for this program\n";
+      return 1;
+    }
+    
+    std::cout << "[Error] JIT not available\n";
+    return 1;
+  }
+#else
+  if (debug) {
+    std::cerr << "[Debug] DRUK_HAVE_LLVM is NOT defined\n";
+  }
+#endif
+
+  // Fallback to VM interpreter
+  std::cout << "[VM] Running with bytecode interpreter...\n";
   druk::VM vm;
   auto function = std::make_shared<druk::ObjFunction>();
   function->chunk = std::move(chunk);
   function->name = "script";
-  vm.set_args(druk::build_args(argc, argv, 1));
+  vm.set_args(druk::build_args(args, force_vm ? 2 : 1));
   vm.interpret(function);
 
   return 0;

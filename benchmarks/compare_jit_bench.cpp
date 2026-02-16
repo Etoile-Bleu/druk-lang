@@ -8,6 +8,10 @@
 #include "druk/semantic/analyzer.hpp"
 #include "druk/vm/vm.hpp"
 
+#ifdef DRUK_HAVE_LLVM
+#include "druk/codegen/llvm_jit.hpp"
+#endif
+
 #include <benchmark/benchmark.h>
 #include <filesystem>
 #include <fstream>
@@ -55,9 +59,6 @@ struct DrukProgram {
       return;
     }
 
-    // Set globals for the benchmark if needed, or constant fold.
-    // The benchmark uses a hardcoded 10M in the .druk file.
-
     druk::SymbolTable symtab;
     druk::SemanticAnalyzer analyzer(symtab, errors, interner, source);
     analyzer.analyze(statements);
@@ -87,7 +88,7 @@ DrukProgram &program() {
   return prog;
 }
 
-// Ensure the loop is NOT optimized by using volatile or a more complex sum
+// Baseline C++ - using volatile to prevent over-optimization
 int64_t sum_native(int64_t n) {
   volatile int64_t acc = 0;
   for (int64_t i = 0; i < n; ++i) {
@@ -98,6 +99,8 @@ int64_t sum_native(int64_t n) {
 
 } // namespace
 
+// ==================== BENCHMARKS ====================
+
 static void BM_CPP_Sum(benchmark::State &state) {
   for (auto _ : state) {
     auto result = sum_native(kN);
@@ -106,7 +109,7 @@ static void BM_CPP_Sum(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations() * kN);
 }
 
-static void BM_Druk_Sum(benchmark::State &state) {
+static void BM_Druk_VM_Sum(benchmark::State &state) {
   auto &prog = program();
   if (!prog.ok) {
     state.SkipWithError(prog.error.c_str());
@@ -121,5 +124,42 @@ static void BM_Druk_Sum(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations() * kN);
 }
 
+#ifdef DRUK_HAVE_LLVM
+static void BM_Druk_JIT_Sum(benchmark::State &state) {
+  auto &prog = program();
+  if (!prog.ok) {
+    state.SkipWithError(prog.error.c_str());
+    return;
+  }
+
+  druk::JITEngine jit;
+  if (!jit.is_available()) {
+    state.SkipWithError("JIT not available");
+    return;
+  }
+
+  for (auto _ : state) {
+    auto result = jit.execute(prog.function.get());
+    benchmark::DoNotOptimize(result);
+  }
+  state.SetItemsProcessed(state.iterations() * kN);
+  
+  // Print JIT stats
+  auto stats = jit.get_stats();
+  if (state.thread_index() == 0) {
+    std::cout << "\n[JIT Stats] Functions compiled: " << stats.functions_compiled
+              << ", Avg compile time: " 
+              << (stats.total_compile_time_ms / stats.functions_compiled) 
+              << " ms\n";
+  }
+}
+#endif
+
+// Register benchmarks
 BENCHMARK(BM_CPP_Sum);
-BENCHMARK(BM_Druk_Sum);
+BENCHMARK(BM_Druk_VM_Sum);
+#ifdef DRUK_HAVE_LLVM
+BENCHMARK(BM_Druk_JIT_Sum);
+#endif
+
+BENCHMARK_MAIN();

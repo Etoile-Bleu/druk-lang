@@ -87,7 +87,9 @@ void Generator::visit_var(VarDecl *stmt) {
       }
     }
     add_local(name);
-    // No opcode needed, value is already on stack (from initializer)
+    uint8_t slot = static_cast<uint8_t>(current_compiler_->locals.size() - 1);
+    emit_opcode(OpCode::SetLocal);
+    emit_byte(slot);
   } else {
     // Global variable
     uint8_t arg = current_chunk().add_constant(Value(name));
@@ -170,6 +172,9 @@ void Generator::visit_func(FuncDecl *stmt) {
   // Define the variable that holds the function
   if (current_compiler_->scope_depth > 0) {
     add_local(name);
+    uint8_t slot = static_cast<uint8_t>(current_compiler_->locals.size() - 1);
+    emit_opcode(OpCode::SetLocal);
+    emit_byte(slot);
   } else {
     uint8_t arg = current_chunk().add_constant(Value(name));
     emit_opcode(OpCode::DefineGlobal);

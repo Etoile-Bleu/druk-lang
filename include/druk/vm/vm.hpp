@@ -24,6 +24,7 @@ public:
 
   InterpretResult interpret(std::shared_ptr<ObjFunction> function);
   void set_args(const std::vector<std::string> &args);
+  const Value &last_result() const { return last_result_; }
 
 private:
   InterpretResult run();
@@ -61,6 +62,8 @@ private:
   // argv/input string storage
   std::vector<std::string> argv_storage_;
   std::vector<std::string> input_storage_;
+
+  Value last_result_{};
 
   friend class VMTest;
 };

@@ -1,7 +1,7 @@
 // Built-in functions implementation for VM
 // Included directly into vm.cpp run() function
 
-OP_LEN: {
+case OpCode::Len: {
   {
     Value val = pop();
     
@@ -17,10 +17,10 @@ OP_LEN: {
       return InterpretResult::RuntimeError;
     }
   }
-  DISPATCH();
+  break;
 }
 
-OP_PUSH: {
+case OpCode::Push: {
   {
     Value element = pop();
     Value array_val = pop();
@@ -35,10 +35,10 @@ OP_PUSH: {
     arr->elements.push_back(element);
     push(Value()); // Return nil
   }
-  DISPATCH();
+  break;
 }
 
-OP_POP_ARRAY: {
+case OpCode::PopArray: {
   {
     Value array_val = pop();
     
@@ -60,10 +60,10 @@ OP_POP_ARRAY: {
     arr->elements.pop_back();
     push(element);
   }
-  DISPATCH();
+  break;
 }
 
-OP_TYPEOF: {
+case OpCode::TypeOf: {
   {
     Value val = pop();
 
@@ -88,10 +88,10 @@ OP_TYPEOF: {
       push(Value(std::string_view(kNil)));
     }
   }
-  DISPATCH();
+  break;
 }
 
-OP_KEYS: {
+case OpCode::Keys: {
   {
     Value obj_val = pop();
     if (!obj_val.is_struct()) {
@@ -110,10 +110,10 @@ OP_KEYS: {
 
     push(Value(keys));
   }
-  DISPATCH();
+  break;
 }
 
-OP_VALUES: {
+case OpCode::Values: {
   {
     Value obj_val = pop();
     if (!obj_val.is_struct()) {
@@ -132,10 +132,10 @@ OP_VALUES: {
 
     push(Value(values));
   }
-  DISPATCH();
+  break;
 }
 
-OP_CONTAINS: {
+case OpCode::Contains: {
   {
     Value needle = pop();
     Value haystack = pop();
@@ -164,10 +164,10 @@ OP_CONTAINS: {
       return InterpretResult::RuntimeError;
     }
   }
-  DISPATCH();
+  break;
 }
 
-OP_INPUT: {
+case OpCode::Input: {
   {
     std::string line;
     if (!std::getline(std::cin, line)) {
@@ -176,5 +176,5 @@ OP_INPUT: {
       push(Value(store_string(std::move(line))));
     }
   }
-  DISPATCH();
+  break;
 }

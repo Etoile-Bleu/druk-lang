@@ -22,6 +22,35 @@ endif()
 # Dependencies
 if(NOT EMSCRIPTEN)
     find_package(ICU REQUIRED COMPONENTS uc data)
+    message(STATUS "Found ICU ${ICU_VERSION}")
+    
+    # LLVM for JIT compilation - using LLVM 22.1.0-rc3
+    set(LLVM_DIR "C:/dev/clang+llvm-22.1.0-rc3-x86_64-pc-windows-msvc/lib/cmake/llvm" CACHE PATH "LLVM CMake directory")
+    find_package(LLVM CONFIG REQUIRED)
+    if(LLVM_FOUND)
+        message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+        message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+        
+        include_directories(${LLVM_INCLUDE_DIRS})
+        separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+        add_definitions(${LLVM_DEFINITIONS_LIST})
+        
+        llvm_map_components_to_libnames(llvm_libs 
+            core support native orcjit executionengine
+            target x86codegen x86asmparser passes)
+        
+        set(DRUK_HAVE_LLVM ON)
+        add_compile_definitions(DRUK_HAVE_LLVM)
+        add_compile_definitions(LLVM_VERSION_STRING="${LLVM_VERSION_STRING}")
+        
+        # Windows DIA SDK path for LLVM (must be before add_library)
+        if(WIN32)
+            link_directories("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/DIA SDK/lib/amd64")
+        endif()
+    else()
+        message(WARNING "LLVM not found. JIT compilation will be disabled.")
+        set(DRUK_HAVE_LLVM OFF)
+    endif()
 endif()
 
 include(FetchContent)
@@ -35,15 +64,15 @@ if(NOT EMSCRIPTEN)
     )
     FetchContent_MakeAvailable(googletest)
 
-    # GoogleBenchmark
-    FetchContent_Declare(
-        benchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG v1.8.3
-    )
-    set(BENCHMARK_ENABLE_TESTING OFF)
-    set(BENCHMARK_ENABLE_WERROR OFF)
-    FetchContent_MakeAvailable(benchmark)
+    # GoogleBenchmark - Disabled on Windows due to regex issues
+    # FetchContent_Declare(
+    #     benchmark
+    #     GIT_REPOSITORY https://github.com/google/benchmark.git
+    #     GIT_TAG v1.8.3
+    # )
+    # set(BENCHMARK_ENABLE_TESTING OFF)
+    # set(BENCHMARK_ENABLE_WERROR OFF)
+    # FetchContent_MakeAvailable(benchmark)
 endif()
 
 # Core Library
@@ -69,9 +98,17 @@ add_library(druk-core STATIC
     src/codegen/gen_expr.cpp
     src/codegen/gen_stmt.cpp
     src/codegen/gen_collections.cpp
+    src/codegen/jit_runtime.cpp
     src/vm/vm.cpp
     src/druk_c_api.cpp
 )
+
+if(DRUK_HAVE_LLVM)
+    target_sources(druk-core PRIVATE
+        src/codegen/llvm_backend.cpp
+        src/codegen/llvm_jit.cpp
+    )
+endif()
 
 target_include_directories(druk-core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -82,6 +119,23 @@ if(NOT EMSCRIPTEN)
         ICU::uc
         ICU::data
     )
+    
+    if(DRUK_HAVE_LLVM)
+        llvm_map_components_to_libnames(LLVM_LIBRARIES 
+            Core Support OrcJIT ExecutionEngine
+            Target X86CodeGen X86AsmParser X86Desc X86Info
+            Passes Analysis TransformUtils ScalarOpts InstCombine
+            MC MCParser Object RuntimeDyld JITLink
+            TargetParser AsmParser BitWriter IRReader)
+        
+        message(STATUS "LLVM libraries: ${LLVM_LIBRARIES}")
+        target_link_libraries(druk-core PUBLIC ${LLVM_LIBRARIES})
+        
+        # Windows-specific libraries required by LLVM
+        if(WIN32)
+            target_link_libraries(druk-core PUBLIC ws2_32 version diaguids)
+        endif()
+    endif()
 endif()
 
 if(NOT MSVC)
@@ -92,6 +146,10 @@ endif()
 # Main Executable
 add_executable(druk src/main.cpp)
 target_link_libraries(druk PRIVATE druk-core)
+
+# Microbenchmark (no Google Benchmark dependency)
+add_executable(druk_compare_microbench benchmarks/compare_microbench.cpp)
+target_link_libraries(druk_compare_microbench PRIVATE druk-core)
 
 # Stub Executable for compiled programs
 add_executable(druk-stub src/druk_stub.cpp)
@@ -118,5 +176,6 @@ endif()
 if(NOT EMSCRIPTEN)
     enable_testing()
     add_subdirectory(tests)
-    add_subdirectory(benchmarks)
+    # Temporarily disable benchmarks due to regex issues on Windows
+    # add_subdirectory(benchmarks)
 endif()
