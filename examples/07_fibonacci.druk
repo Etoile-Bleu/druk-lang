@@ -1,0 +1,18 @@
+// ༧. ཕི་བོ་ན་ཆི་ (Fibonacci - Iterative)
+// Comprehensive example with input, loop, and arithmetic.
+
+གྲངས་ཀ་ ན = ༡༠;
+གྲངས་ཀ་ ཨ = ༠;
+གྲངས་ཀ་ བ = ༡;
+
+འབྲི་ "Fibonacci (Iterative):";
+འབྲི་ ཨ;
+འབྲི་ བ;
+
+རིམ་པ་ (ན > ༢) {
+    གྲངས་ཀ་ ག = ཨ + བ;
+    འབྲི་ ག;
+    ཨ = བ;
+    བ = ག;
+    ན = ན - ༡;
+}

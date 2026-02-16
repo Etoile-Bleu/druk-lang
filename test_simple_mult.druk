@@ -1,0 +1,7 @@
+// Test simple multiplication
+ལས་ཀ་ multiply(གྲངས་ཀ་ a, གྲངས་ཀ་ b) {
+    ལོག་ a * b;
+}
+
+འབྲི་ "Result:";
+འབྲི་ multiply(༣, ༥);

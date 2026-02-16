@@ -20,27 +20,31 @@ if(MSVC)
 endif()
 
 # Dependencies
-find_package(ICU REQUIRED COMPONENTS uc data)
+if(NOT EMSCRIPTEN)
+    find_package(ICU REQUIRED COMPONENTS uc data)
+endif()
 
 include(FetchContent)
 
-# GoogleTest
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
-)
-FetchContent_MakeAvailable(googletest)
+if(NOT EMSCRIPTEN)
+    # GoogleTest
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    FetchContent_MakeAvailable(googletest)
 
-# GoogleBenchmark
-FetchContent_Declare(
-    benchmark
-    GIT_REPOSITORY https://github.com/google/benchmark.git
-    GIT_TAG v1.8.3
-)
-set(BENCHMARK_ENABLE_TESTING OFF)
-set(BENCHMARK_ENABLE_WERROR OFF)
-FetchContent_MakeAvailable(benchmark)
+    # GoogleBenchmark
+    FetchContent_Declare(
+        benchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.8.3
+    )
+    set(BENCHMARK_ENABLE_TESTING OFF)
+    set(BENCHMARK_ENABLE_WERROR OFF)
+    FetchContent_MakeAvailable(benchmark)
+endif()
 
 # Core Library
 add_library(druk-core STATIC
@@ -54,16 +58,31 @@ add_library(druk-core STATIC
     src/parser/core/stmt.cpp
     src/parser/core/expr.cpp
     src/parser/core/recovery.cpp
+    src/semantic/types.cpp
+    src/semantic/table.cpp
+    src/semantic/core/driver.cpp
+    src/semantic/core/decl.cpp
+    src/semantic/core/stmt.cpp
+    src/semantic/core/expr.cpp
+    src/codegen/chunk.cpp
+    src/codegen/generator.cpp
+    src/codegen/gen_expr.cpp
+    src/codegen/gen_stmt.cpp
+    src/codegen/gen_collections.cpp
+    src/vm/vm.cpp
+    src/druk_c_api.cpp
 )
 
 target_include_directories(druk-core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(druk-core PUBLIC
-    ICU::uc
-    ICU::data
-)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(druk-core PUBLIC
+        ICU::uc
+        ICU::data
+    )
+endif()
 
 if(NOT MSVC)
     target_compile_options(druk-core PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
@@ -74,7 +93,30 @@ endif()
 add_executable(druk src/main.cpp)
 target_link_libraries(druk PRIVATE druk-core)
 
+# Stub Executable for compiled programs
+add_executable(druk-stub src/druk_stub.cpp)
+target_link_libraries(druk-stub PRIVATE druk-core)
+set_target_properties(druk-stub PROPERTIES OUTPUT_NAME "druk-stub")
+
+# WASM target (Emscripten)
+if(EMSCRIPTEN)
+    add_executable(druk-wasm src/wasm/druk_wasm.cpp)
+    target_link_libraries(druk-wasm PRIVATE druk-core)
+    set_target_properties(druk-wasm PROPERTIES OUTPUT_NAME "druk_wasm")
+    set_target_properties(druk-wasm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+        "${CMAKE_SOURCE_DIR}/web/public/wasm")
+    target_link_options(druk-wasm PRIVATE
+        "-sMODULARIZE=1"
+        "-sEXPORT_NAME=DrukWasm"
+        "-sEXPORTED_FUNCTIONS=['_druk_wasm_run','_druk_wasm_free']"
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString']"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sENVIRONMENT=web")
+endif()
+
 # Testing
-enable_testing()
-add_subdirectory(tests)
-add_subdirectory(benchmarks)
+if(NOT EMSCRIPTEN)
+    enable_testing()
+    add_subdirectory(tests)
+    add_subdirectory(benchmarks)
+endif()

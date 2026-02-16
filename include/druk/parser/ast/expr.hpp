@@ -2,9 +2,15 @@
 
 #include "druk/parser/ast/node.hpp"
 
+#include "druk/semantic/types.hpp"
+
+#include "druk/codegen/value.hpp"
+
 namespace druk {
 
-struct Expr : Node {};
+struct Expr : Node {
+  Type type = Type::Void(); // Default to Void or Error?
+};
 
 struct BinaryExpr : Expr {
   Expr *left;
@@ -18,6 +24,7 @@ struct UnaryExpr : Expr {
 };
 
 struct LiteralExpr : Expr {
+  Value literal_value;
   // Token in Node has the value (Number/String/Bool)
 };
 
@@ -26,11 +33,12 @@ struct GroupingExpr : Expr {
 };
 
 struct VariableExpr : Expr {
+  Token name;
   // Token in Node is the identifier
 };
 
 struct AssignmentExpr : Expr {
-  Token name;
+  Expr *target;  // Can be VariableExpr, IndexExpr, or MemberAccessExpr
   Expr *value;
 };
 
@@ -46,6 +54,29 @@ struct LogicalExpr : Expr {
   Expr *left;
   Expr *right;
   // Token is op (and/or)
+};
+
+// Arrays
+struct ArrayLiteralExpr : Expr {
+  Expr **elements;
+  uint32_t count;
+};
+
+struct IndexExpr : Expr {
+  Expr *array;  // The array/object being indexed
+  Expr *index;  // The index expression
+};
+
+// Structs
+struct StructLiteralExpr : Expr {
+  Token *field_names;  // Array of identifiers
+  Expr **field_values; // Array of expressions
+  uint32_t field_count;
+};
+
+struct MemberAccessExpr : Expr {
+  Expr *object;        // The object being accessed
+  Token member_name;   // Field name
 };
 
 } // namespace druk

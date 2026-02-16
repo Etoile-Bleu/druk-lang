@@ -5,7 +5,6 @@
 #include <string_view>
 #include <vector>
 
-
 namespace druk {
 
 struct SourceLocation {
@@ -31,6 +30,7 @@ public:
   void report(Error error);
   [[nodiscard]] bool has_errors() const { return error_count_ > 0; }
   [[nodiscard]] const std::vector<Error> &errors() const { return errors_; }
+  void print(std::string_view source_code) const;
 
 private:
   std::vector<Error> errors_;

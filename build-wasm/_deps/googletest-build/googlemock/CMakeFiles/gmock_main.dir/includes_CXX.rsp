@@ -1,0 +1,1 @@
+-isystem "C:/dev/druk-lang/build-wasm/_deps/googletest-src/googlemock/include" -isystem "C:/dev/druk-lang/build-wasm/_deps/googletest-src/googlemock" -isystem "C:/dev/druk-lang/build-wasm/_deps/googletest-src/googletest/include" -isystem "C:/dev/druk-lang/build-wasm/_deps/googletest-src/googletest"

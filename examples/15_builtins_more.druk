@@ -1,0 +1,21 @@
+// More built-in functions (Dzongkha)
+ལས་ཀ་ test() {
+    གྲངས་ཀ་ arr = [༡, ༢, ༣];
+    གྲངས་ཀ་ person = {name: "Tenzin", age: ༢༥};
+
+    // རིགས་ (type)
+    འབྲི་ རིགས་(arr);      // "array"
+    འབྲི་ རིགས་(person);   // "struct"
+
+    // མིང་ཐོ་ (keys) and བེད་སྤྱོད་ (values)
+    འབྲི་ ཚད་(མིང་ཐོ་(person));
+    འབྲི་ ཚད་(བེད་སྤྱོད་(person));
+
+    // ཡོད་ (contains)
+    འབྲི་ ཡོད་(arr, ༢);           // true
+    འབྲི་ ཡོད་(arr, ༩);           // false
+    འབྲི་ ཡོད་(person, "name");  // true
+    འབྲི་ ཡོད་(person, "x");     // false
+}
+
+test();

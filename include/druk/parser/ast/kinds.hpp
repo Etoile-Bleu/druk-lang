@@ -14,6 +14,7 @@ enum class NodeKind : uint8_t {
   If,
   Loop,
   Return,
+  Print,
   ExpressionStmt,
 
   // Expressions
@@ -24,7 +25,11 @@ enum class NodeKind : uint8_t {
   VariableExpr,
   Call,
   Assignment,
-  Logical
+  Logical,
+  ArrayLiteral,
+  Index,
+  StructLiteral,
+  MemberAccess
 };
 
 } // namespace druk

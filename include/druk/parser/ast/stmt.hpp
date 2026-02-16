@@ -3,7 +3,6 @@
 #include "druk/parser/ast/expr.hpp"
 #include "druk/parser/ast/node.hpp"
 
-
 namespace druk {
 
 struct Stmt : Node {};
@@ -32,10 +31,14 @@ struct ExpressionStmt : Stmt {
   Expr *expression;
 };
 
+struct PrintStmt : Stmt {
+  Expr *expression;
+};
+
 struct VarDecl : Stmt {
   Token name;
   Expr *initializer; // Nullable
-                     // Type info?
+  Token type_token;  // Explicit type from source (KwNumber, KwString, etc.)
 };
 
 struct FuncDecl : Stmt {

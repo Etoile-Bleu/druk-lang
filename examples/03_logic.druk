@@ -1,0 +1,11 @@
+// ༣. གཏན་ཚིགས་ (Logic)
+// Using boolean types and if/else conditions.
+
+བདེན་ ཡིན = བདེན་; // Boolean 'is' = true
+བདེན་ མིན = རྫུན་; // Boolean 'is_not' = false
+
+གལ་ཏེ་ (ཡིན && !མིན) {
+    འབྲི་ "གཏན་ཚིགས་བདེན་པ་རེད།"; // Logic is true.
+} ཡང་ན་ {
+    འབྲི་ "གཏན་ཚིགས་རྫུན་མ་རེད།"; // Logic is false.
+}

@@ -7,7 +7,6 @@
 #include <optional>
 #include <string_view>
 
-
 namespace druk {
 
 class Lexer {
@@ -17,6 +16,8 @@ public:
 
   // Get the next token. Returns TokenKind::EndOfFile when done.
   Token next();
+
+  [[nodiscard]] std::string_view source() const { return source_; }
 
 private:
   // Helpers
@@ -32,10 +33,14 @@ private:
   Token scan_string();
 
   Token make_token(TokenKind kind);
-  Token make_error_token(std::string_view message);
+  Token make_error_token(const char *message);
 
   // Keyword lookup
   TokenKind check_keyword(std::string_view text);
+
+  bool is_alpha(char c);
+  bool is_digit(char c);
+  bool is_tibetan_digit_start(char c);
 
   std::string_view source_;
   ArenaAllocator &arena_;

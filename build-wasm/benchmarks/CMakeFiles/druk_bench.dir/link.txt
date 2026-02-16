@@ -1,0 +1,1 @@
+C:\Users\Tigre\Downloads\emsdk\upstream\emscripten\em++.bat -O3 -DNDEBUG @CMakeFiles\druk_bench.dir\objects1.rsp -o druk_bench.js @CMakeFiles\druk_bench.dir\linkLibs.rsp

@@ -18,4 +18,10 @@ void ErrorReporter::report(Error error) {
   errors_.push_back(std::move(error));
 }
 
+void ErrorReporter::print(std::string_view source_code) const {
+  for (const auto &err : errors_) {
+    std::cerr << err.to_string(source_code) << "\n";
+  }
+}
+
 } // namespace druk

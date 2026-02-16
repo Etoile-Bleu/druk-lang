@@ -3,28 +3,21 @@
 namespace druk {
 
 Stmt *Parser::parse_declaration() {
-  if (match(TokenKind::KwFunction))
+  if (match(TokenKind::KwFunction)) {
     return parse_function();
-  // Var declaration logic can be part of stmt or here.
-  // Spec says: statement = var_decl | ...
-  // But usually var decl is a statement.
-  // Let's delegate to statement if not function.
-  // Actually spec: program = function*
-  // So top level only functions.
-  // But wait, user implementation plan said recursive descent for statements.
-  // Let's follow spec strictly: program = function*
-  // If not function, error or sync.
-  // BUT common C-like allow globals.
-  // Let's stick to spec: ONLY functions at top level.
-  // Error if not KwFunction.
-  // Actually wait, let's look at `program = function*` in user request.
-  // Yes.
+  }
 
-  // However, for testing statements we might want to parse statements directly?
-  // For now implement strict.
+  // Check for variable declaration start (Types)
+  if (match(TokenKind::KwNumber) || match(TokenKind::KwString) ||
+      match(TokenKind::KwBoolean)) {
+    return parse_var_declaration();
+  }
 
-  return nullptr; // Placeholder until implemented
-                  // Wait, I need to implement parse_function.
+  // Otherwise assume statement
+  // But wait, parse_statement also needs to be implemented.
+  // If we don't have parse_statement, we panic.
+  // For now, let's try parse_statement.
+  return parse_statement();
 }
 
 Stmt *Parser::parse_function() {
@@ -32,29 +25,58 @@ Stmt *Parser::parse_function() {
   Token name = consume(TokenKind::Identifier, "Expect function name.");
   consume(TokenKind::LParen, "Expect '(' after function name.");
 
+  std::vector<Token> params;
   // Parse parameters
   if (!check(TokenKind::RParen)) {
     do {
-      consume(TokenKind::Identifier, "Expect parameter type."); // Type name
-      consume(TokenKind::Identifier, "Expect parameter name.");
+      // Consume Type (Keyword or Identifier)
+      if (match(TokenKind::KwNumber) || match(TokenKind::KwString) ||
+          match(TokenKind::KwBoolean)) {
+        // Built-in type
+      } else {
+        consume(TokenKind::Identifier, "Expect parameter type.");
+      }
+
+      Token param_name =
+          consume(TokenKind::Identifier, "Expect parameter name.");
+      params.push_back(param_name);
+
+      // Store param (we used to only have FuncDecl structure with Token name...
+      // check if we need to store params in AST now?)
+      // FuncDecl in stmt.hpp has `Token *params`.
+      // We should probably store them.
+      // But for now just consume appropriately to avoid infinite loop.
+
+      // Update: we need to store them in a temporary vector to put into
+      // FuncDecl later But first let's fix the loop hang.
     } while (match(TokenKind::Comma));
   }
 
   consume(TokenKind::RParen, "Expect ')' after parameters.");
 
-  consume(TokenKind::LBrace, "Expect '{' before function body.");
   Stmt *body = parse_block();
 
   auto *func = arena_.make<FuncDecl>();
   func->kind = NodeKind::Function;
   func->name = name;
   func->body = body;
-  // param storing omitted for brevity/allocator simplicity in this pass
+
+  if (params.empty()) {
+    func->params = nullptr;
+    func->param_count = 0;
+  } else {
+    func->param_count = static_cast<uint32_t>(params.size());
+    func->params = arena_.allocate_array<Token>(func->param_count);
+    for (size_t i = 0; i < params.size(); ++i) {
+      func->params[i] = params[i];
+    }
+  }
+
   return func;
 }
 
 Stmt *Parser::parse_var_declaration() {
-  // Token type = previous(); // Consumed by caller (parse_statement)
+  Token type_token = previous(); // Consumed by caller (parse_statement/decl)
   // We might want to store type in VarDecl later. For now ignore.
   Token name = consume(TokenKind::Identifier, "Expect variable name.");
 
@@ -69,6 +91,7 @@ Stmt *Parser::parse_var_declaration() {
   var->kind = NodeKind::Variable;
   var->name = name;
   var->initializer = initializer;
+  var->type_token = type_token;
   return var;
 }
 
