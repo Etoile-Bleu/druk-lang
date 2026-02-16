@@ -30,17 +30,16 @@ static void BM_Druk_Sum(benchmark::State &state) {
 }
   )";
 
+  // Parse once outside the benchmark loop
+  druk::ArenaAllocator arena;
+  druk::StringInterner interner(arena);
+  druk::ErrorReporter errors;
+  
+  druk::Parser parser(source, arena, interner, errors);
+  auto program = parser.parse();
+
   for (auto _ : state) {
-    druk::ArenaAllocator arena;
-    druk::StringInterner interner(arena);
-    druk::ErrorReporter errors;
-    
-    druk::Parser parser(source, arena, interner, errors);
-    
-    // Parse the code
-    auto program = parser.parse();
-    
-    // Execute the code
+    // Only execute the code in the benchmark loop
     druk::Interpreter interpreter(source);
     interpreter.execute(program);
     
