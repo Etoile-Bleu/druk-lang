@@ -54,6 +54,7 @@ add_library(druk-core STATIC
     src/parser/core/stmt.cpp
     src/parser/core/expr.cpp
     src/parser/core/recovery.cpp
+    src/interpreter/interpreter.cpp
 )
 
 target_include_directories(druk-core PUBLIC
