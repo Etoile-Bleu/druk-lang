@@ -20,7 +20,13 @@ BENCHMARK(BM_CPP_Sum);
 // Druk sum - parsing and interpreting
 static void BM_Druk_Sum(benchmark::State &state) {
   // Druk code to sum numbers from 0 to 999
-  // Using correct Dzongkha/Tibetan keywords
+  // Using correct Dzongkha/Tibetan keywords:
+  // - གྲངས་ཀ (grang-ka) = number type declaration
+  // - རིམ་པ (rim-pa) = loop statement
+  // - English equivalent: 
+  //   number sum = 0;
+  //   number i = 0;
+  //   loop (i < 1000) { sum = sum + i; i = i + 1; }
   std::string source = R"(
 གྲངས་ཀ sum = 0;
 གྲངས་ཀ i = 0;

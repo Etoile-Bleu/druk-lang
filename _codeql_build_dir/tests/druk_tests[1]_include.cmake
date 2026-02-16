@@ -1,0 +1,5 @@
+if(EXISTS "/home/runner/work/druk-lang/druk-lang/_codeql_build_dir/tests/druk_tests[1]_tests.cmake")
+  include("/home/runner/work/druk-lang/druk-lang/_codeql_build_dir/tests/druk_tests[1]_tests.cmake")
+else()
+  add_test(druk_tests_NOT_BUILT druk_tests_NOT_BUILT)
+endif()

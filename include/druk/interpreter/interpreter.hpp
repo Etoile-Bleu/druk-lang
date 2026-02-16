@@ -31,7 +31,8 @@ public:
   bool is_truthy() const {
     if (is_bool()) return as_bool();
     if (is_number()) return as_number() != 0.0;
-    return !is_string() || !as_string().empty();
+    if (is_string()) return !as_string().empty();
+    return false;  // Default for invalid/empty values
   }
   
 private:
@@ -40,6 +41,8 @@ private:
 
 class Interpreter {
 public:
+  // Note: source_view must remain valid for the lifetime of the interpreter
+  // as variable names and values reference it via string_view
   Interpreter(std::string_view source) : source_(source) {}
   
   void execute(const std::vector<Stmt*>& statements);
