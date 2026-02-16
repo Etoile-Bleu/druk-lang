@@ -13,7 +13,7 @@
 #endif
 
 // Define this to trace execution
-#define DEBUG_TRACE_EXECUTION
+// #define DEBUG_TRACE_EXECUTION
 
 namespace druk {
 
@@ -21,17 +21,17 @@ VM::VM() {
   stack_.resize(kStackMax);
   stack_base_ = stack_.data();
   stack_top_ = stack_base_;
-  frames_.reserve(64);      // Pre-allocate frames
+  frames_.reserve(64); // Pre-allocate frames
 }
 
 VM::~VM() {}
 
-void VM::set_args(const std::vector<std::string>& args) {
+void VM::set_args(const std::vector<std::string> &args) {
   argv_storage_ = args;
 
   auto argv_array = std::make_shared<ObjArray>();
   argv_array->elements.reserve(argv_storage_.size());
-  for (const auto& s : argv_storage_) {
+  for (const auto &s : argv_storage_) {
     argv_array->elements.push_back(Value(std::string_view(s)));
   }
 
@@ -51,9 +51,11 @@ void VM::set_args(const std::vector<std::string>& args) {
   };
 
   set_global(std::string_view(kArgv), Value(argv_array));
-  set_global(std::string_view(kArgc), Value(static_cast<int64_t>(argv_storage_.size())));
+  set_global(std::string_view(kArgc),
+             Value(static_cast<int64_t>(argv_storage_.size())));
   set_global(std::string_view(kArgvDz), Value(argv_array));
-  set_global(std::string_view(kArgcDz), Value(static_cast<int64_t>(argv_storage_.size())));
+  set_global(std::string_view(kArgcDz),
+             Value(static_cast<int64_t>(argv_storage_.size())));
 }
 
 InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
@@ -64,7 +66,7 @@ InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
   CallFrame frame;
   frame.function = function.get();
   frame.ip = function->chunk.code().data();
-  frame.slots_offset = 0;
+  frame.slots = stack_base_;
 
   // Push the function itself onto stack (slot 0)
   push(Value(function));
@@ -148,18 +150,17 @@ InterpretResult VM::run() {
     ++stack_top_;                                                              \
   } while (false)
 
-    static void *dispatch_table[] = {
-      &&OP_RETURN,     &&OP_CONSTANT,      &&OP_NIL,           &&OP_TRUE,
-      &&OP_FALSE,      &&OP_POP,           &&OP_GET_LOCAL,     &&OP_SET_LOCAL,
-      &&OP_GET_GLOBAL, &&OP_DEFINE_GLOBAL, &&OP_SET_GLOBAL,    &&OP_EQUAL,
-      &&OP_GREATER,    &&OP_LESS,          &&OP_ADD,           &&OP_SUBTRACT,
-      &&OP_MULTIPLY,   &&OP_DIVIDE,        &&OP_NOT,           &&OP_NEGATE,
-      &&OP_PRINT,      &&OP_JUMP,          &&OP_JUMP_IF_FALSE, &&OP_LOOP,
-      &&OP_CALL,       &&OP_BUILD_ARRAY,   &&OP_INDEX,         &&OP_INDEX_SET,
-      &&OP_BUILD_STRUCT, &&OP_GET_FIELD,   &&OP_SET_FIELD,
-        &&OP_LEN,        &&OP_PUSH,          &&OP_POP_ARRAY,
-        &&OP_TYPEOF,     &&OP_KEYS,          &&OP_VALUES,        &&OP_CONTAINS,
-        &&OP_INPUT,
+  static void *dispatch_table[] = {
+      &&OP_RETURN,       &&OP_CONSTANT,      &&OP_NIL,           &&OP_TRUE,
+      &&OP_FALSE,        &&OP_POP,           &&OP_GET_LOCAL,     &&OP_SET_LOCAL,
+      &&OP_GET_GLOBAL,   &&OP_DEFINE_GLOBAL, &&OP_SET_GLOBAL,    &&OP_EQUAL,
+      &&OP_GREATER,      &&OP_LESS,          &&OP_ADD,           &&OP_SUBTRACT,
+      &&OP_MULTIPLY,     &&OP_DIVIDE,        &&OP_NOT,           &&OP_NEGATE,
+      &&OP_PRINT,        &&OP_JUMP,          &&OP_JUMP_IF_FALSE, &&OP_LOOP,
+      &&OP_CALL,         &&OP_BUILD_ARRAY,   &&OP_INDEX,         &&OP_INDEX_SET,
+      &&OP_BUILD_STRUCT, &&OP_GET_FIELD,     &&OP_SET_FIELD,     &&OP_LEN,
+      &&OP_PUSH,         &&OP_POP_ARRAY,     &&OP_TYPEOF,        &&OP_KEYS,
+      &&OP_VALUES,       &&OP_CONTAINS,      &&OP_INPUT,
   };
 
   uint8_t instruction;
@@ -167,7 +168,7 @@ InterpretResult VM::run() {
 
 OP_RETURN: {
   Value result = pop();
-  size_t return_slots_offset = frame_->slots_offset;
+  Value *return_slots = frame_->slots;
   frames_.pop_back();
   if (frames_.empty()) {
     stack_top_ = stack_base_;
@@ -178,7 +179,7 @@ OP_RETURN: {
   // Update frame_ BEFORE accessing it
   frame_ = &frames_.back();
 
-  stack_top_ = stack_base_ + return_slots_offset;
+  stack_top_ = return_slots;
   push(std::move(result));
 
   ip = frame_->ip;
@@ -202,13 +203,13 @@ OP_POP: { pop(); }
 
 OP_GET_LOCAL: {
   uint8_t slot = READ_BYTE();
-  push(stack_[frame_->slots_offset + slot]);
+  push(frame_->slots[slot]);
 }
   DISPATCH();
 
 OP_SET_LOCAL: {
   uint8_t slot = READ_BYTE();
-  stack_[frame_->slots_offset + slot] = peek(0);
+  frame_->slots[slot] = peek(0);
 }
   DISPATCH();
 
@@ -222,8 +223,8 @@ OP_GET_GLOBAL: {
     auto it = globals_.find(name);
     if (it == globals_.end()) {
       frame_->ip = ip;
-      runtime_error("Undefined variable '%.*s'.", static_cast<int>(name.length()),
-                    name.data());
+      runtime_error("Undefined variable '%.*s'.",
+                    static_cast<int>(name.length()), name.data());
       return InterpretResult::RuntimeError;
     }
     global_cache_.name = name;
@@ -264,8 +265,8 @@ OP_SET_GLOBAL: {
     auto it = globals_.find(name);
     if (it == globals_.end()) {
       frame_->ip = ip;
-      runtime_error("Undefined variable '%.*s'.", static_cast<int>(name.length()),
-                    name.data());
+      runtime_error("Undefined variable '%.*s'.",
+                    static_cast<int>(name.length()), name.data());
       return InterpretResult::RuntimeError;
     }
     it->second = peek(0);
@@ -391,9 +392,10 @@ OP_LOOP: {
 }
   DISPATCH();
 
+#include "vm_builtins.cpp"
 #include "vm_collections.cpp"
 #include "vm_fields.cpp"
-#include "vm_builtins.cpp"
+
 
 OP_CALL: {
   uint8_t arg_count = READ_BYTE();
@@ -424,7 +426,7 @@ OP_CALL: {
   CallFrame next_frame;
   next_frame.function = function.get();
   next_frame.ip = function->chunk.code().data();
-  next_frame.slots_offset = stack_size() - static_cast<size_t>(arg_count) - 1;
+  next_frame.slots = stack_top_ - arg_count - 1;
 
   frames_.push_back(next_frame);
   frame_ = &frames_.back();
