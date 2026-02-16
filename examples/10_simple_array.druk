@@ -1,0 +1,9 @@
+// Simple array test
+ལས་ཀ་ test() {
+    གྲངས་ཀ་ arr = [༡, ༢, ༣];
+    འབྲི་ arr[༠];
+    འབྲི་ arr[༡];
+    འབྲི་ arr[༢];
+}
+
+test();

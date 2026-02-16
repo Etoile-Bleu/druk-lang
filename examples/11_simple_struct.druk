@@ -1,0 +1,8 @@
+// Simple struct test
+ལས་ཀ་ test() {
+    གྲངས་ཀ་ person = {name: "Tenzin", age: ༢༥};
+    འབྲི་ person.name;
+    འབྲི་ person.age;
+}
+
+test();

@@ -1,0 +1,17 @@
+// Test return values
+ལས་ཀ་ add(གྲངས་ཀ་ a, གྲངས་ཀ་ b) {
+    ལོག་ a + b;
+}
+
+ལས་ཀ་ factorial(གྲངས་ཀ་ n) {
+    གལ་ཏེ་(n <= ༡) {
+        ལོག་ ༡;
+    }
+    ལོག་ n * factorial(n - ༡);
+}
+
+གྲངས་ཀ་ result = add(༥, ༣);
+འབྲི་ result;
+
+གྲངས་ཀ་ fact = factorial(༥);
+འབྲི་ fact;

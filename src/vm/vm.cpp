@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <iostream>
 #include <memory>
-#include <variant>
 #include <string>
 
 #ifdef __GNUC__
@@ -33,7 +32,7 @@ void VM::set_args(const std::vector<std::string>& args) {
   auto argv_array = std::make_shared<ObjArray>();
   argv_array->elements.reserve(argv_storage_.size());
   for (const auto& s : argv_storage_) {
-    argv_array->elements.push_back(std::string_view(s));
+    argv_array->elements.push_back(Value(std::string_view(s)));
   }
 
   static const std::string kArgv = "argv";
@@ -51,10 +50,10 @@ void VM::set_args(const std::vector<std::string>& args) {
     }
   };
 
-  set_global(std::string_view(kArgv), argv_array);
-  set_global(std::string_view(kArgc), static_cast<int64_t>(argv_storage_.size()));
-  set_global(std::string_view(kArgvDz), argv_array);
-  set_global(std::string_view(kArgcDz), static_cast<int64_t>(argv_storage_.size()));
+  set_global(std::string_view(kArgv), Value(argv_array));
+  set_global(std::string_view(kArgc), Value(static_cast<int64_t>(argv_storage_.size())));
+  set_global(std::string_view(kArgvDz), Value(argv_array));
+  set_global(std::string_view(kArgcDz), Value(static_cast<int64_t>(argv_storage_.size())));
 }
 
 InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
@@ -68,7 +67,7 @@ InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
   frame.slots_offset = 0;
 
   // Push the function itself onto stack (slot 0)
-  push(function);
+  push(Value(function));
 
   frames_.push_back(frame);
   frame_ = &frames_.back();
@@ -135,15 +134,15 @@ InterpretResult VM::run() {
 
 #define BINARY_OP(type, op)                                                    \
   do {                                                                         \
-    auto *bptr = std::get_if<int64_t>(stack_top_ - 1);                         \
-    auto *aptr = std::get_if<int64_t>(stack_top_ - 2);                         \
-    if (!aptr || !bptr) {                                                      \
+    Value *bptr = (stack_top_ - 1);                                            \
+    Value *aptr = (stack_top_ - 2);                                            \
+    if (!aptr->is_int() || !bptr->is_int()) {                                  \
       frame_->ip = ip;                                                         \
       runtime_error("Operands must be numbers.");                              \
       return InterpretResult::RuntimeError;                                    \
     }                                                                          \
-    int64_t b = *bptr;                                                         \
-    int64_t a = *aptr;                                                         \
+    int64_t b = bptr->as_int();                                                \
+    int64_t a = aptr->as_int();                                                \
     stack_top_ -= 2;                                                           \
     *stack_top_ = Value(type(a op b));                                         \
     ++stack_top_;                                                              \
@@ -189,13 +188,13 @@ OP_RETURN: {
 OP_CONSTANT: { push(READ_CONSTANT()); }
   DISPATCH();
 
-OP_NIL: { push(std::monostate{}); }
+OP_NIL: { push(Value()); }
   DISPATCH();
 
-OP_TRUE: { push(true); }
+OP_TRUE: { push(Value(true)); }
   DISPATCH();
 
-OP_FALSE: { push(false); }
+OP_FALSE: { push(Value(false)); }
   DISPATCH();
 
 OP_POP: { pop(); }
@@ -214,7 +213,8 @@ OP_SET_LOCAL: {
   DISPATCH();
 
 OP_GET_GLOBAL: {
-  std::string_view name = std::get<std::string_view>(READ_CONSTANT());
+  Value name_val = READ_CONSTANT();
+  std::string_view name = name_val.as_string();
   if (global_cache_.slot && global_cache_.version == globals_version_ &&
       global_cache_.name == name) {
     push(*global_cache_.slot);
@@ -235,7 +235,8 @@ OP_GET_GLOBAL: {
   DISPATCH();
 
 OP_DEFINE_GLOBAL: {
-  std::string_view name = std::get<std::string_view>(READ_CONSTANT());
+  Value name_val = READ_CONSTANT();
+  std::string_view name = name_val.as_string();
   Value value = pop();
   auto it = globals_.find(name);
   if (it == globals_.end()) {
@@ -254,7 +255,8 @@ OP_DEFINE_GLOBAL: {
   DISPATCH();
 
 OP_SET_GLOBAL: {
-  std::string_view name = std::get<std::string_view>(READ_CONSTANT());
+  Value name_val = READ_CONSTANT();
+  std::string_view name = name_val.as_string();
   if (global_cache_.slot && global_cache_.version == globals_version_ &&
       global_cache_.name == name) {
     *global_cache_.slot = peek(0);
@@ -297,15 +299,15 @@ OP_MULTIPLY: { BINARY_OP(int64_t, *); }
   DISPATCH();
 
 OP_DIVIDE: {
-  auto *bptr = std::get_if<int64_t>(stack_top_ - 1);
-  auto *aptr = std::get_if<int64_t>(stack_top_ - 2);
-  if (!aptr || !bptr) {
+  Value *bptr = (stack_top_ - 1);
+  Value *aptr = (stack_top_ - 2);
+  if (!aptr->is_int() || !bptr->is_int()) {
     frame_->ip = ip;
     runtime_error("Operands must be numbers.");
     return InterpretResult::RuntimeError;
   }
-  int64_t b = *bptr;
-  int64_t a = *aptr;
+  int64_t b = bptr->as_int();
+  int64_t a = aptr->as_int();
   if (b == 0) {
     frame_->ip = ip;
     runtime_error("Division by zero.");
@@ -319,24 +321,24 @@ OP_DIVIDE: {
 
 OP_NOT: {
   Value v = pop();
-  if (std::holds_alternative<bool>(v)) {
-    push(Value(!std::get<bool>(v)));
-  } else if (std::holds_alternative<std::monostate>(v)) {
-    push(true);
+  if (v.is_bool()) {
+    push(Value(!v.as_bool()));
+  } else if (v.is_nil()) {
+    push(Value(true));
   } else {
-    push(false);
+    push(Value(false));
   }
 }
   DISPATCH();
 
 OP_NEGATE: {
-  auto *vptr = std::get_if<int64_t>(stack_top_ - 1);
-  if (!vptr) {
+  Value *vptr = (stack_top_ - 1);
+  if (!vptr->is_int()) {
     frame_->ip = ip;
     runtime_error("Operand must be a number.");
     return InterpretResult::RuntimeError;
   }
-  int64_t v = *vptr;
+  int64_t v = vptr->as_int();
   --stack_top_;
   *stack_top_ = Value(-v);
   ++stack_top_;
@@ -345,19 +347,19 @@ OP_NEGATE: {
 
 OP_PRINT: {
   Value val = pop();
-  if (std::holds_alternative<int64_t>(val)) {
-    std::cout << unicode::to_tibetan_numeral(std::get<int64_t>(val)) << "\n";
-  } else if (std::holds_alternative<bool>(val)) {
-    std::cout << (std::get<bool>(val) ? "བདེན" : "རྫུན") << "\n";
-  } else if (std::holds_alternative<std::string_view>(val)) {
-    std::cout << std::get<std::string_view>(val) << "\n";
-  } else if (std::holds_alternative<std::monostate>(val)) {
+  if (val.is_int()) {
+    std::cout << unicode::to_tibetan_numeral(val.as_int()) << "\n";
+  } else if (val.is_bool()) {
+    std::cout << (val.as_bool() ? "བདེན" : "རྫུན") << "\n";
+  } else if (val.is_string()) {
+    std::cout << val.as_string() << "\n";
+  } else if (val.is_nil()) {
     std::cout << "nil\n";
-  } else if (std::holds_alternative<std::shared_ptr<ObjArray>>(val)) {
-    auto arr = std::get<std::shared_ptr<ObjArray>>(val);
+  } else if (val.is_array()) {
+    auto arr = val.as_array();
     std::cout << "[array:" << arr->elements.size() << "]\n";
-  } else if (std::holds_alternative<std::shared_ptr<ObjStruct>>(val)) {
-    auto obj = std::get<std::shared_ptr<ObjStruct>>(val);
+  } else if (val.is_struct()) {
+    auto obj = val.as_struct();
     std::cout << "{struct:" << obj->fields.size() << "}\n";
   }
 }
@@ -373,9 +375,9 @@ OP_JUMP_IF_FALSE: {
   uint16_t offset = READ_SHORT();
   const Value &v = peek(0);
   bool is_false = false;
-  if (std::holds_alternative<bool>(v))
-    is_false = !std::get<bool>(v);
-  else if (std::holds_alternative<std::monostate>(v))
+  if (v.is_bool())
+    is_false = !v.as_bool();
+  else if (v.is_nil())
     is_false = true;
 
   if (is_false)
@@ -396,14 +398,13 @@ OP_LOOP: {
 OP_CALL: {
   uint8_t arg_count = READ_BYTE();
   const Value &callee = peek(arg_count);
-  if (!std::holds_alternative<std::shared_ptr<ObjFunction>>(callee)) {
+  if (!callee.is_function()) {
     frame_->ip = ip;
     runtime_error("Can only call functions.");
     return InterpretResult::RuntimeError;
   }
 
-  std::shared_ptr<ObjFunction> function =
-      std::get<std::shared_ptr<ObjFunction>>(callee);
+  std::shared_ptr<ObjFunction> function = callee.as_function();
 
   if (static_cast<int>(arg_count) != function->arity) {
     frame_->ip = ip;

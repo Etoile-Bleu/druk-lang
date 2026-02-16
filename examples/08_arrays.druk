@@ -1,0 +1,22 @@
+// Array example - arrays in Druk
+// སྣོད་གྲངས་ means "array" in Tibetan
+
+ལས་ཀ་ རྩ_བ་() {
+    // Create array literal
+    གྲངས་ཀ་ arr = [༡, ༢, ༣, ༤, ༥];
+    
+    // Access array elements
+    འབྲི་ arr[༠];  // First element: ༡
+    འབྲི་ arr[༢];  // Third element: ༣
+    འབྲི་ arr[༤];  // Last element: ༥
+    
+    // Nested arrays
+    གྲངས་ཀ་ matrix = [
+        [༡, ༢],
+        [༣, ༤]
+    ];
+    
+    འབྲི་ matrix[༠][༡];  // Should print ༢
+}
+
+རྩ_བ་();

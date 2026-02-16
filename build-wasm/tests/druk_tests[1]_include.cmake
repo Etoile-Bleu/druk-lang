@@ -1,0 +1,5 @@
+if(EXISTS "C:/dev/druk-lang/build-wasm/tests/druk_tests[1]_tests.cmake")
+  include("C:/dev/druk-lang/build-wasm/tests/druk_tests[1]_tests.cmake")
+else()
+  add_test(druk_tests_NOT_BUILT druk_tests_NOT_BUILT)
+endif()

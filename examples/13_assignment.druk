@@ -1,0 +1,18 @@
+// Test assignment to collections
+ལས་ཀ་ test() {
+    // Array assignment
+    གྲངས་ཀ་ arr = [༡, ༢, ༣];
+    འབྲི་ arr[༡];  // Should print ༢
+    
+    arr[༡] = ༩༩;
+    འབྲི་ arr[༡];  // Should print ༩༩
+    
+    // Struct field assignment
+    གྲངས་ཀ་ person = {name: "John", age: ༢༥};
+    འབྲི་ person.age;  // Should print ༢༥
+    
+    person.age = ༣༠;
+    འབྲི་ person.age;  // Should print ༣༠
+}
+
+test();

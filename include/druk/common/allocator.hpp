@@ -42,6 +42,17 @@ public:
     return static_cast<T *>(allocate(count * sizeof(T), alignof(T)));
   }
 
+  template <typename T> [[nodiscard]] T *make_array(size_t count) {
+    if (count == 0)
+      return nullptr;
+    T *arr = allocate_array<T>(count);
+    // Default construct each element
+    for (size_t i = 0; i < count; i++) {
+      new (&arr[i]) T();
+    }
+    return arr;
+  }
+
   [[nodiscard]] void *allocate(size_t size, size_t alignment) {
     size_t current_ptr =
         reinterpret_cast<size_t>(blocks_.back().get()) + current_offset_;

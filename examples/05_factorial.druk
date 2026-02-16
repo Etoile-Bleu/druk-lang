@@ -1,0 +1,13 @@
+// ༥. ལས་ཀ་ (Function & Recursion)
+// Example of a recursive factorial function.
+
+ལས་ཀ་ factorial(གྲངས་ཀ་ ན) {
+    གལ་ཏེ་ (ན <= ༡) {
+        ལོག་ ༡;
+    } ཡང་ན་ {
+        ལོག་ ན * factorial(ན - ༡);
+    }
+}
+
+འབྲི་ "Factorial of ༥:";
+འབྲི་ factorial(༥);

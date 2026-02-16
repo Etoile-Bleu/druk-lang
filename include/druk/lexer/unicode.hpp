@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include <vector>
 
-
 namespace druk {
 
 class StringInterner {
@@ -45,6 +44,9 @@ namespace unicode {
 
 // Validate UTF-8 string
 [[nodiscard]] bool is_valid_utf8(std::string_view text);
+
+// Convert number to Tibetan numerals
+[[nodiscard]] std::string to_tibetan_numeral(int64_t n);
 } // namespace unicode
 
 } // namespace druk

@@ -23,8 +23,8 @@ protected:
 
 TEST_F(VMTest, BasicArithmetic) {
   // 1 + 2
-  int c1 = chunk.add_constant(int64_t{1});
-  int c2 = chunk.add_constant(int64_t{2});
+  int c1 = chunk.add_constant(Value(int64_t{1}));
+  int c2 = chunk.add_constant(Value(int64_t{2}));
 
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
@@ -37,7 +37,7 @@ TEST_F(VMTest, BasicArithmetic) {
 }
 
 TEST_F(VMTest, Negate) {
-  int c1 = chunk.add_constant(int64_t{10});
+  int c1 = chunk.add_constant(Value(int64_t{10}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
   chunk.write(OpCode::Negate, 1);
@@ -48,8 +48,8 @@ TEST_F(VMTest, Negate) {
 
 TEST_F(VMTest, Comparison) {
   // 1 < 2 -> true
-  int c1 = chunk.add_constant(int64_t{1});
-  int c2 = chunk.add_constant(int64_t{2});
+  int c1 = chunk.add_constant(Value(int64_t{1}));
+  int c2 = chunk.add_constant(Value(int64_t{2}));
 
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
@@ -61,13 +61,13 @@ TEST_F(VMTest, Comparison) {
 
   EXPECT_EQ(interpret(), InterpretResult::Ok);
   Value res = peek(0);
-  EXPECT_TRUE(std::holds_alternative<bool>(res));
-  EXPECT_TRUE(std::get<bool>(res));
+  EXPECT_TRUE(res.is_bool());
+  EXPECT_TRUE(res.as_bool());
 }
 
 TEST_F(VMTest, GlobalVariables) {
-  int name_idx = chunk.add_constant(std::string_view("a"));
-  int val_idx = chunk.add_constant(int64_t{10});
+  int name_idx = chunk.add_constant(Value(std::string_view("a")));
+  int val_idx = chunk.add_constant(Value(int64_t{10}));
 
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(val_idx), 1);
@@ -82,14 +82,14 @@ TEST_F(VMTest, GlobalVariables) {
   EXPECT_EQ(interpret(), InterpretResult::Ok);
 
   Value res = peek(0);
-  EXPECT_TRUE(std::holds_alternative<int64_t>(res));
-  EXPECT_EQ(std::get<int64_t>(res), 10);
+  EXPECT_TRUE(res.is_int());
+  EXPECT_EQ(res.as_int(), 10);
 }
 
 TEST_F(VMTest, SetGlobal) {
-  int name_idx = chunk.add_constant(std::string_view("a"));
-  int val1 = chunk.add_constant(int64_t{10});
-  int val2 = chunk.add_constant(int64_t{20});
+  int name_idx = chunk.add_constant(Value(std::string_view("a")));
+  int val1 = chunk.add_constant(Value(int64_t{10}));
+  int val2 = chunk.add_constant(Value(int64_t{20}));
 
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(val1), 1);
@@ -106,18 +106,18 @@ TEST_F(VMTest, SetGlobal) {
   EXPECT_EQ(interpret(), InterpretResult::Ok);
 
   Value res = peek(0);
-  EXPECT_TRUE(std::holds_alternative<int64_t>(res));
-  EXPECT_EQ(std::get<int64_t>(res), 20);
+  EXPECT_TRUE(res.is_int());
+  EXPECT_EQ(res.as_int(), 20);
 }
 
 TEST_F(VMTest, LocalVariables) {
   // Push 1 (slot 1)
-  int c1 = chunk.add_constant(int64_t{1});
+  int c1 = chunk.add_constant(Value(int64_t{1}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
 
   // Push 2 (slot 2)
-  int c2 = chunk.add_constant(int64_t{2});
+  int c2 = chunk.add_constant(Value(int64_t{2}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c2), 1);
 
@@ -136,16 +136,16 @@ TEST_F(VMTest, LocalVariables) {
   chunk.write(OpCode::Return, 1);
 
   EXPECT_EQ(interpret(), InterpretResult::Ok);
-  EXPECT_EQ(std::get<int64_t>(peek(0)), 3);
+  EXPECT_EQ(peek(0).as_int(), 3);
 }
 
 TEST_F(VMTest, SetLocal) {
-  int c1 = chunk.add_constant(int64_t{1});
+  int c1 = chunk.add_constant(Value(int64_t{1}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
 
   // Set local 1 = 2
-  int c2 = chunk.add_constant(int64_t{2});
+  int c2 = chunk.add_constant(Value(int64_t{2}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c2), 1);
 
@@ -156,7 +156,7 @@ TEST_F(VMTest, SetLocal) {
 
   EXPECT_EQ(interpret(), InterpretResult::Ok);
 
-  EXPECT_EQ(std::get<int64_t>(peek(0)), 2);
+  EXPECT_EQ(peek(0).as_int(), 2);
 }
 
 TEST_F(VMTest, FunctionCall) {
@@ -174,15 +174,15 @@ TEST_F(VMTest, FunctionCall) {
   add_func->chunk.write(OpCode::Add, 1);
   add_func->chunk.write(OpCode::Return, 1);
 
-  int func_idx = chunk.add_constant(add_func);
+  int func_idx = chunk.add_constant(Value(add_func));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(func_idx), 1);
 
-  int c1 = chunk.add_constant(int64_t{1});
+  int c1 = chunk.add_constant(Value(int64_t{1}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c1), 1);
 
-  int c2 = chunk.add_constant(int64_t{2});
+  int c2 = chunk.add_constant(Value(int64_t{2}));
   chunk.write(OpCode::Constant, 1);
   chunk.write(static_cast<uint8_t>(c2), 1);
 
@@ -194,8 +194,8 @@ TEST_F(VMTest, FunctionCall) {
   EXPECT_EQ(interpret(), InterpretResult::Ok);
 
   Value res = peek(0);
-  EXPECT_TRUE(std::holds_alternative<int64_t>(res));
-  EXPECT_EQ(std::get<int64_t>(res), 3);
+  EXPECT_TRUE(res.is_int());
+  EXPECT_EQ(res.as_int(), 3);
 }
 
 } // namespace druk

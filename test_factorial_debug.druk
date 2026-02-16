@@ -1,0 +1,17 @@
+// Test factorial avec débogage
+ལས་ཀ་ factorial(གྲངས་ཀ་ ན) {
+    གལ་ཏེ་ (ན <= ༡) {
+        འབྲི་ "Base case, retournant 1";
+        ལོག་ ༡;
+    } ཡང་ན་ {
+        འབྲི་ "Calculant ";
+        འབྲི་ ན;
+        འབྲི་ " * factorial(";
+        འབྲི་ ན - ༡;
+        འབྲི་ ")";
+        ལོག་ ན * factorial(ན - ༡);
+    }
+}
+
+འབྲི་ "Factorial of 3:";
+འབྲི་ factorial(༣);

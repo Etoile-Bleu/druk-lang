@@ -9,13 +9,11 @@ Stmt *Parser::parse_statement() {
     return parse_loop_statement();
   if (match(TokenKind::KwReturn))
     return parse_return_statement();
-  if (match(TokenKind::LBrace))
+  if (match(TokenKind::KwPrint))
+    return parse_print_statement();
+  if (check(TokenKind::LBrace))
     return parse_block();
 
-  // Var decl check: type identifier
-  // We need lookahead to distinguish expr stmt vs var decl?
-  // Or check if current token is a type keyword?
-  // Druk doesn't have keywords for int/string types?
   // "primitive types: གྲངས་ཀ (int64)..."
   // Yes, KwNumber, KwString, KwBoolean ARE keywords.
   if (match(TokenKind::KwNumber) || match(TokenKind::KwString) ||
@@ -29,6 +27,8 @@ Stmt *Parser::parse_statement() {
 Stmt *Parser::parse_block() {
   auto *block = arena_.make<BlockStmt>();
   block->kind = NodeKind::Block;
+
+  consume(TokenKind::LBrace, "Expect '{' before block.");
 
   std::vector<Stmt *> stmts;
   while (!check(TokenKind::RBrace) && !is_at_end()) {
@@ -97,8 +97,43 @@ Stmt *Parser::parse_expression_statement() {
   return stmt;
 }
 
-// Implement loop/return in similar fashion...
-Stmt *Parser::parse_loop_statement() { return nullptr; }   // Placeholder
-Stmt *Parser::parse_return_statement() { return nullptr; } // Placeholder
+Stmt *Parser::parse_print_statement() {
+  Expr *expr = parse_expression();
+  consume(TokenKind::Semicolon, "Expect ';' after value.");
+  auto *stmt = arena_.make<PrintStmt>();
+  stmt->kind = NodeKind::Print;
+  stmt->expression = expr;
+  return stmt;
+}
+
+Stmt *Parser::parse_loop_statement() {
+  consume(TokenKind::LParen, "Expect '(' after 'loop'.");
+  Expr *condition = parse_expression();
+  consume(TokenKind::RParen, "Expect ')' after loop condition.");
+
+  Stmt *body = parse_block(); // Block required
+
+  auto *stmt = arena_.make<LoopStmt>();
+  stmt->kind = NodeKind::Loop;
+  stmt->condition = condition;
+  stmt->body = body;
+  return stmt;
+}
+
+Stmt *Parser::parse_return_statement() {
+  Token keyword = previous();
+  Expr *value = nullptr;
+  if (!check(TokenKind::Semicolon)) {
+    value = parse_expression();
+  }
+
+  consume(TokenKind::Semicolon, "Expect ';' after return value.");
+
+  auto *stmt = arena_.make<ReturnStmt>();
+  stmt->kind = NodeKind::Return;
+  stmt->token = keyword;
+  stmt->value = value;
+  return stmt;
+}
 
 } // namespace druk

@@ -6,7 +6,6 @@
 #include "druk/parser/ast/stmt.hpp"
 #include <vector>
 
-
 namespace druk {
 
 class Parser {
@@ -24,6 +23,7 @@ private:
   Stmt *parse_if_statement();
   Stmt *parse_loop_statement();
   Stmt *parse_return_statement();
+  Stmt *parse_print_statement();
   Stmt *parse_expression_statement();
   Stmt *parse_block();
 
@@ -37,7 +37,12 @@ private:
   Expr *parse_factor();
   Expr *parse_unary();
   Expr *parse_call();
+  Expr *parse_postfix();
   Expr *parse_primary();
+  
+  // Collections
+  Expr *parse_array_literal();
+  Expr *parse_struct_literal();
 
   // Helpers
   bool match(TokenKind kind);
@@ -52,6 +57,7 @@ private:
 
   Lexer lexer_;
   ArenaAllocator &arena_;
+  StringInterner &interner_;
   ErrorReporter &errors_;
 
   std::vector<Token> tokens_; // Buffer? Or streaming?

@@ -48,8 +48,12 @@ enum class TokenKind : uint16_t {
   RParen,    // )
   LBrace,    // {
   RBrace,    // }
+  LBracket,  // [
+  RBracket,  // ]
   Comma,     // ,
   Semicolon, // ;
+  Colon,     // :
+  Dot,       // .
 
   Count
 };
