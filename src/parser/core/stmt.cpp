@@ -27,6 +27,7 @@ Stmt *Parser::parse_statement() {
 }
 
 Stmt *Parser::parse_block() {
+  // Expect the '{' to already be consumed by the caller
   auto *block = arena_.make<BlockStmt>();
   block->kind = NodeKind::Block;
 
@@ -73,10 +74,12 @@ Stmt *Parser::parse_if_statement() {
   Expr *condition = parse_expression();
   consume(TokenKind::RParen, "Expect ')' after if condition.");
 
+  consume(TokenKind::LBrace, "Expect '{' before if body.");
   Stmt *then_branch = parse_block(); // Block required by grammar
   Stmt *else_branch = nullptr;
 
   if (match(TokenKind::KwElse)) {
+    consume(TokenKind::LBrace, "Expect '{' before else body.");
     else_branch = parse_block();
   }
 
@@ -98,7 +101,33 @@ Stmt *Parser::parse_expression_statement() {
 }
 
 // Implement loop/return in similar fashion...
-Stmt *Parser::parse_loop_statement() { return nullptr; }   // Placeholder
-Stmt *Parser::parse_return_statement() { return nullptr; } // Placeholder
+Stmt *Parser::parse_loop_statement() {
+  consume(TokenKind::LParen, "Expect '(' after 'loop'.");
+  Expr *condition = parse_expression();
+  consume(TokenKind::RParen, "Expect ')' after loop condition.");
+
+  consume(TokenKind::LBrace, "Expect '{' before loop body.");
+  Stmt *body = parse_block(); // Block required by grammar
+
+  auto *stmt = arena_.make<LoopStmt>();
+  stmt->kind = NodeKind::Loop;
+  stmt->condition = condition;
+  stmt->body = body;
+  return stmt;
+}
+
+Stmt *Parser::parse_return_statement() {
+  auto *stmt = arena_.make<ReturnStmt>();
+  stmt->kind = NodeKind::Return;
+  
+  if (!check(TokenKind::Semicolon)) {
+    stmt->value = parse_expression();
+  } else {
+    stmt->value = nullptr;
+  }
+  
+  consume(TokenKind::Semicolon, "Expect ';' after return value.");
+  return stmt;
+}
 
 } // namespace druk

@@ -12,14 +12,9 @@ Expr *Parser::parse_assignment() {
     Expr *value = parse_assignment();
 
     if (expr->kind == NodeKind::VariableExpr) {
-      // VariableExpr* name_expr = static_cast<VariableExpr*>(expr);
-      // We need the token from VariableExpr to put into AssignmentExpr?
-      // Current AssignmentExpr struct has 'Token name'. VariableExpr struct
-      // has... wait, let's check VariableExpr.
       auto *assign = arena_.make<AssignmentExpr>();
       assign->kind = NodeKind::Assignment;
-      // assign->name = name->token; ??? VariableExpr doesn't hold token in my
-      // struct yet
+      assign->name = expr->token;  // Get token from the variable expression
       assign->value = value;
       return assign;
     }
@@ -54,15 +49,73 @@ Expr *Parser::parse_logic_and() {
   return expr;
 }
 
-Expr *Parser::parse_equality() { return parse_term(); }   // Shortcut
-Expr *Parser::parse_comparison() { return parse_term(); } // Shortcut
-Expr *Parser::parse_term() { return parse_factor(); }     // Shortcut
-Expr *Parser::parse_factor() { return parse_unary(); }    // Shortcut
+Expr *Parser::parse_equality() {
+  Expr *expr = parse_comparison();
+  while (match(TokenKind::EqualEqual) || match(TokenKind::BangEqual)) {
+    Token op = previous();
+    Expr *right = parse_comparison();
+    auto *binary = arena_.make<BinaryExpr>();
+    binary->kind = NodeKind::Binary;
+    binary->token = op;
+    binary->left = expr;
+    binary->right = right;
+    expr = binary;
+  }
+  return expr;
+}
+
+Expr *Parser::parse_comparison() {
+  Expr *expr = parse_term();
+  while (match(TokenKind::Less) || match(TokenKind::LessEqual) ||
+         match(TokenKind::Greater) || match(TokenKind::GreaterEqual)) {
+    Token op = previous();
+    Expr *right = parse_term();
+    auto *binary = arena_.make<BinaryExpr>();
+    binary->kind = NodeKind::Binary;
+    binary->token = op;
+    binary->left = expr;
+    binary->right = right;
+    expr = binary;
+  }
+  return expr;
+}
+
+Expr *Parser::parse_term() {
+  Expr *expr = parse_factor();
+  while (match(TokenKind::Plus) || match(TokenKind::Minus)) {
+    Token op = previous();
+    Expr *right = parse_factor();
+    auto *binary = arena_.make<BinaryExpr>();
+    binary->kind = NodeKind::Binary;
+    binary->token = op;
+    binary->left = expr;
+    binary->right = right;
+    expr = binary;
+  }
+  return expr;
+}
+
+Expr *Parser::parse_factor() {
+  Expr *expr = parse_unary();
+  while (match(TokenKind::Star) || match(TokenKind::Slash)) {
+    Token op = previous();
+    Expr *right = parse_unary();
+    auto *binary = arena_.make<BinaryExpr>();
+    binary->kind = NodeKind::Binary;
+    binary->token = op;
+    binary->left = expr;
+    binary->right = right;
+    expr = binary;
+  }
+  return expr;
+}
 
 Expr *Parser::parse_unary() {
   if (match(TokenKind::Bang) || match(TokenKind::Minus)) {
+    Token op = previous();
     auto *expr = arena_.make<UnaryExpr>();
     expr->kind = NodeKind::Unary;
+    expr->token = op;
     expr->right = parse_unary();
     return expr;
   }
@@ -88,10 +141,10 @@ Expr *Parser::parse_primary() {
     return group;
   }
   if (match(TokenKind::Identifier)) {
+    Token name = previous();
     auto *var = arena_.make<VariableExpr>();
     var->kind = NodeKind::VariableExpr;
-    // var->name = previous(); // Need to add token to VariableExpr struct in
-    // expr.hpp if we want it
+    var->token = name;
     return var;
   }
 
