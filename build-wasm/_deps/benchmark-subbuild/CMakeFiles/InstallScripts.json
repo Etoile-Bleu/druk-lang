@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/dev/druk-lang/build-wasm/_deps/benchmark-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
