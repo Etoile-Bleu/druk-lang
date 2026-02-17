@@ -1,71 +1,87 @@
 #pragma once
-#include "druk/codegen/chunk.hpp"
-#include "druk/codegen/obj.hpp"
-#include "druk/codegen/value.hpp"
+
 #include <memory>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
-namespace druk {
+#include "druk/codegen/core/chunk.h"
+#include "druk/codegen/core/obj.h"
+#include "druk/codegen/core/value.h"
 
-enum class InterpretResult { Ok, CompileError, RuntimeError };
 
-struct CallFrame {
-  ObjFunction *function;
-  const uint8_t *ip;
-  Value *slots;
+namespace druk
+{
+
+enum class InterpretResult
+{
+    Ok,
+    CompileError,
+    RuntimeError
 };
 
-class VM {
-public:
-  VM();
-  ~VM();
+namespace vm
+{
 
-  InterpretResult interpret(std::shared_ptr<ObjFunction> function);
-  void set_args(const std::vector<std::string> &args);
-  const Value &last_result() const { return last_result_; }
-
-private:
-  InterpretResult run();
-
-  void push(Value value);
-  Value pop();
-  const Value &peek(int distance) const;
-
-  void runtime_error(const char *format, ...);
-  std::string_view store_string(std::string value);
-
-  size_t stack_size() const {
-    return static_cast<size_t>(stack_top_ - stack_base_);
-  }
-
-  // Stack of call frames
-  std::vector<CallFrame> frames_;
-  CallFrame *frame_ = nullptr; // Current frame cache
-
-  // Stack
-  static constexpr size_t kStackMax = 256 * 64;
-  std::vector<Value> stack_;
-  Value *stack_base_ = nullptr;
-  Value *stack_top_ = nullptr;
-
-  // Globals
-  std::unordered_map<std::string_view, Value> globals_;
-  size_t globals_version_ = 0;
-  struct GlobalCache {
-    std::string_view name{};
-    Value *slot = nullptr;
-    size_t version = 0;
-  } global_cache_;
-
-  // argv/input string storage
-  std::vector<std::string> argv_storage_;
-  std::vector<std::string> input_storage_;
-
-  Value last_result_{};
-
-  friend class VMTest;
+struct CallFrame
+{
+    codegen::ObjFunction* function;
+    const uint8_t*        ip;
+    codegen::Value*       slots;
 };
 
-} // namespace druk
+class VM
+{
+   public:
+    VM();
+    ~VM();
+
+    InterpretResult       interpret(std::shared_ptr<codegen::ObjFunction> function);
+    void                  set_args(const std::vector<std::string>& args);
+    const codegen::Value& lastResult() const
+    {
+        return lastResult_;
+    }
+
+   private:
+    InterpretResult run();
+
+    void                  push(codegen::Value value);
+    codegen::Value        pop();
+    const codegen::Value& peek(int distance) const;
+
+    void             runtimeError(const char* format, ...);
+    std::string_view storeString(std::string value);
+
+    size_t stackSize() const
+    {
+        return static_cast<size_t>(stackTop_ - stackBase_);
+    }
+
+    std::vector<CallFrame> frames_;
+    CallFrame*             frame_ = nullptr;
+
+    static constexpr size_t     kStackMax = 256 * 64;
+    std::vector<codegen::Value> stack_;
+    codegen::Value*             stackBase_ = nullptr;
+    codegen::Value*             stackTop_  = nullptr;
+
+    std::unordered_map<std::string_view, codegen::Value> globals_;
+    size_t                                               globalsVersion_ = 0;
+    struct GlobalCache
+    {
+        std::string_view name{};
+        codegen::Value*  slot    = nullptr;
+        size_t           version = 0;
+    } globalCache_;
+
+    std::vector<std::string> argvStorage_;
+    std::vector<std::string> inputStorage_;
+
+    codegen::Value lastResult_{};
+
+    friend class VMTest;
+};
+
+}  // namespace vm
+}  // namespace druk

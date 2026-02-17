@@ -1,23 +1,44 @@
 #include "druk/semantic/types.hpp"
 
-namespace druk {
+namespace druk::semantic {
 
-std::string type_to_string(Type type) {
-  switch (type.kind) {
-  case TypeKind::Int:
-    return "Int";
-  case TypeKind::String:
-    return "String";
-  case TypeKind::Bool:
-    return "Bool";
-  case TypeKind::Void:
-    return "Void";
-  case TypeKind::Function:
-    return "Function";
-  case TypeKind::Error:
-    return "Error";
-  }
-  return "Unknown";
+bool Type::operator==(const Type& other) const {
+    if (kind != other.kind) return false;
+    
+    if (kind == TypeKind::Array) {
+        if (!elementType || !other.elementType) return elementType == other.elementType;
+        return *elementType == *other.elementType;
+    }
+    
+    if (kind == TypeKind::Struct) {
+        if (fields.size() != other.fields.size()) return false;
+        for (size_t i = 0; i < fields.size(); ++i) {
+            if (fields[i].name != other.fields[i].name) return false;
+            if (!fields[i].type || !other.fields[i].type) {
+                if (fields[i].type != other.fields[i].type) return false;
+                continue;
+            }
+            if (*fields[i].type != *other.fields[i].type) return false;
+        }
+    }
+    
+    return true;
 }
 
-} // namespace druk
+std::string typeToString(const Type& type) {
+    switch (type.kind) {
+        case TypeKind::Void: return "void";
+        case TypeKind::Int: return "number";
+        case TypeKind::String: return "string";
+        case TypeKind::Bool: return "boolean";
+        case TypeKind::Function: return "function";
+        case TypeKind::Array:
+            return "Array<" + (type.elementType ? typeToString(*type.elementType) : "unknown") + ">";
+        case TypeKind::Struct:
+            return "struct";
+        case TypeKind::Error: return "error";
+    }
+    return "unknown";
+}
+
+} // namespace druk::semantic

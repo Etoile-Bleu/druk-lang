@@ -2,8 +2,11 @@
 
 #include <cstdint>
 
-namespace druk {
+namespace druk::parser::ast {
 
+/**
+ * @brief Categorizes the different types of AST nodes.
+ */
 enum class NodeKind : uint8_t {
   // Declarations
   Function,
@@ -32,4 +35,4 @@ enum class NodeKind : uint8_t {
   MemberAccess
 };
 
-} // namespace druk
+} // namespace druk::parser::ast

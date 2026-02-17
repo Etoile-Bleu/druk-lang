@@ -3,19 +3,16 @@
 #include "druk/lexer/token.hpp"
 #include "druk/parser/ast/kinds.hpp"
 
+namespace druk::parser::ast {
 
-namespace druk {
-
+/**
+ * @brief Base class for all AST nodes.
+ */
 struct Node {
-  NodeKind kind;
-  Token
-      token; // Representative token for error reporting (e.g. 'if', identifier)
+  virtual ~Node() = default;
 
-  // Base members could go here.
-  // For tagged union approach, we might put everything in a big union,
-  // or use inheritance with manual layout if we want strict memory control.
-  // Given the constraints and C++20, simple structs + Allocator is fine.
-  // We will use composition/pointers in the specialized structs.
+  NodeKind kind;
+  lexer::Token token; // Representative token for error reporting
 };
 
-} // namespace druk
+} // namespace druk::parser::ast

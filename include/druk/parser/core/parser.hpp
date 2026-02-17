@@ -4,67 +4,78 @@
 #include "druk/parser/ast/expr.hpp"
 #include "druk/parser/ast/node.hpp"
 #include "druk/parser/ast/stmt.hpp"
+#include "druk/util/arena_allocator.hpp"
+#include "druk/util/error_handler.hpp"
 #include <vector>
 
-namespace druk {
+namespace druk::parser {
 
+/**
+ * @brief Parser converts a stream of tokens into an Abstract Syntax Tree (AST).
+ */
 class Parser {
 public:
-  Parser(std::string_view source, ArenaAllocator &arena,
-         StringInterner &interner, ErrorReporter &errors);
+  Parser(std::string_view source, util::ArenaAllocator &arena,
+         lexer::StringInterner &interner, util::ErrorHandler &errors);
 
-  std::vector<Stmt *> parse();
+  /**
+   * @brief Parses the entire source into a list of statements.
+   * @return A vector of statement pointers managed by the arena.
+   */
+  std::vector<ast::Stmt *> parse();
 
 private:
-  Stmt *parse_declaration();
-  Stmt *parse_function();
-  Stmt *parse_var_declaration();
-  Stmt *parse_statement();
-  Stmt *parse_if_statement();
-  Stmt *parse_loop_statement();
-  Stmt *parse_return_statement();
-  Stmt *parse_print_statement();
-  Stmt *parse_expression_statement();
-  Stmt *parse_block();
+  // Declarations
+  ast::Stmt *parseDeclaration();
+  ast::Stmt *parseFunction();
+  ast::Stmt *parseVarDeclaration();
 
-  Expr *parse_expression();
-  Expr *parse_assignment();
-  Expr *parse_logic_or();
-  Expr *parse_logic_and();
-  Expr *parse_equality();
-  Expr *parse_comparison();
-  Expr *parse_term();
-  Expr *parse_factor();
-  Expr *parse_unary();
-  Expr *parse_call();
-  Expr *parse_postfix();
-  Expr *parse_primary();
-  
+  // Statements
+  ast::Stmt *parseStatement();
+  ast::Stmt *parseIfStatement();
+  ast::Stmt *parseLoopStatement();
+  ast::Stmt *parseReturnStatement();
+  ast::Stmt *parsePrintStatement();
+  ast::Stmt *parseExpressionStatement();
+  ast::Stmt *parseBlock();
+
+  // Expressions
+  ast::Expr *parseExpression();
+  ast::Expr *parseAssignment();
+  ast::Expr *parseLogicalOr();
+  ast::Expr *parseLogicalAnd();
+  ast::Expr *parseEquality();
+  ast::Expr *parseComparison();
+  ast::Expr *parseTerm();
+  ast::Expr *parseFactor();
+  ast::Expr *parseUnary();
+  ast::Expr *parseCall(ast::Expr *callee);
+  ast::Expr *parsePostfix();
+  ast::Expr *parsePrimary();
+
   // Collections
-  Expr *parse_array_literal();
-  Expr *parse_struct_literal();
+  ast::Expr *parseArrayLiteral();
+  ast::Expr *parseStructLiteral();
 
   // Helpers
-  bool match(TokenKind kind);
-  bool check(TokenKind kind) const;
-  Token advance();
-  Token consume(TokenKind kind, std::string_view message);
-  Token peek() const;
-  Token previous() const;
-  bool is_at_end() const;
+  bool match(lexer::TokenType kind);
+  bool check(lexer::TokenType kind) const;
+  lexer::Token advance();
+  lexer::Token consume(lexer::TokenType kind, std::string_view message);
+  lexer::Token peek() const;
+  lexer::Token previous() const;
+  bool isAtEnd() const;
   void synchronize();
-  void error(Token token, std::string_view message);
+  void error(lexer::Token token, std::string_view message);
 
-  Lexer lexer_;
-  ArenaAllocator &arena_;
-  StringInterner &interner_;
-  ErrorReporter &errors_;
+  lexer::Lexer lexer_;
+  util::ArenaAllocator &arena_;
+  lexer::StringInterner &interner_;
+  util::ErrorHandler &errors_;
 
-  std::vector<Token> tokens_; // Buffer? Or streaming?
-  // Streaming approach:
-  Token current_;
-  Token previous_;
-  bool panic_mode_ = false;
+  lexer::Token current_;
+  lexer::Token previous_;
+  bool panicMode_ = false;
 };
 
-} // namespace druk
+} // namespace druk::parser

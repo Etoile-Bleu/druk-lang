@@ -1,55 +1,67 @@
 #pragma once
 
-#include "druk/common/allocator.hpp"
-#include "druk/common/error.hpp"
+#include "druk/util/arena_allocator.hpp"
+#include "druk/util/error_handler.hpp"
 #include "druk/lexer/token.hpp"
 #include "druk/lexer/unicode.hpp"
 #include <optional>
 #include <string_view>
 
-namespace druk {
+namespace druk::lexer {
 
+/**
+ * @brief The Lexer class performs lexical analysis on Druk source code.
+ */
 class Lexer {
 public:
-  Lexer(std::string_view source, ArenaAllocator &arena,
-        StringInterner &interner, ErrorReporter &errors);
+  /**
+   * @brief Constructs a Lexer with a source string and required dependencies.
+   */
+  Lexer(std::string_view source, util::ArenaAllocator &arena,
+        StringInterner &interner, util::ErrorHandler &errors);
 
-  // Get the next token. Returns TokenKind::EndOfFile when done.
+  /**
+   * @brief Scans the next token from the source.
+   * @return The scanned Token.
+   */
   Token next();
 
+  /**
+   * @brief Returns the original source code.
+   */
   [[nodiscard]] std::string_view source() const { return source_; }
 
 private:
   // Helpers
   char peek() const;
-  char peek_next() const;
+  char peekNext() const;
   char advance();
   bool match(char expected);
-  void skip_whitespace();
+  void skipWhitespace();
 
   // Scanners
-  Token scan_identifier();
-  Token scan_number();
-  Token scan_string();
+  Token scanIdentifier();
+  Token scanNumber();
+  Token scanString();
 
-  Token make_token(TokenKind kind);
-  Token make_error_token(const char *message);
+  Token makeToken(TokenType type);
+  Token makeErrorToken(const char *message);
 
   // Keyword lookup
-  TokenKind check_keyword(std::string_view text);
+  TokenType checkKeyword(std::string_view text);
 
-  bool is_alpha(char c);
-  bool is_digit(char c);
-  bool is_tibetan_digit_start(char c);
+  bool isAlpha(char c);
+  bool isDigit(char c);
+  bool isTibetanDigitStart(char c);
 
   std::string_view source_;
-  ArenaAllocator &arena_;
+  util::ArenaAllocator &arena_;
   StringInterner &interner_;
-  ErrorReporter &errors_;
+  util::ErrorHandler &errors_;
 
-  uint32_t start_offset_ = 0;   // Start of current token
-  uint32_t current_offset_ = 0; // Current scanning position
+  uint32_t startOffset_ = 0;   // Start of current token
+  uint32_t currentOffset_ = 0; // Current scanning position
   uint32_t line_ = 1;
 };
 
-} // namespace druk
+} // namespace druk::lexer

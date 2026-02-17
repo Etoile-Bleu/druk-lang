@@ -2,29 +2,72 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
+#include <vector>
 
-namespace druk {
+namespace druk::semantic {
 
-enum class TypeKind { Void, Int, String, Bool, Function, Error };
-
-struct Type {
-  TypeKind kind;
-  // For function types, we might need return type and param types.
-  // Kept simple for now (100 LOC limit).
-  // Pointers for complex types management?
-
-  bool operator==(const Type &other) const { return kind == other.kind; }
-
-  bool operator!=(const Type &other) const { return kind != other.kind; }
-
-  static Type Int() { return {TypeKind::Int}; }
-  static Type String() { return {TypeKind::String}; }
-  static Type Bool() { return {TypeKind::Bool}; }
-  static Type Void() { return {TypeKind::Void}; }
-  static Type Function() { return {TypeKind::Function}; }
-  static Type Error() { return {TypeKind::Error}; }
+/**
+ * @brief Categorizes the fundamental types in the language.
+ */
+enum class TypeKind {
+    Void,
+    Int,
+    String,
+    Bool,
+    Function,
+    Array,
+    Struct,
+    Error
 };
 
-std::string type_to_string(Type type);
+struct Type;
 
-} // namespace druk
+/**
+ * @brief Represents a field in a struct type.
+ */
+struct StructField {
+    std::string name;
+    std::shared_ptr<Type> type;
+};
+
+/**
+ * @brief Represents a type in the Druk language.
+ */
+struct Type {
+    TypeKind kind;
+    
+    // For arrays
+    std::shared_ptr<Type> elementType;
+    
+    // For structs
+    std::vector<StructField> fields;
+
+    bool operator==(const Type& other) const;
+    bool operator!=(const Type& other) const { return !(*this == other); }
+
+    static Type makeInt() { return {TypeKind::Int}; }
+    static Type makeString() { return {TypeKind::String}; }
+    static Type makeBool() { return {TypeKind::Bool}; }
+    static Type makeVoid() { return {TypeKind::Void}; }
+    static Type makeError() { return {TypeKind::Error}; }
+    
+    static Type makeArray(Type element) {
+        Type t{TypeKind::Array};
+        t.elementType = std::make_shared<Type>(element);
+        return t;
+    }
+    
+    static Type makeStruct(std::vector<StructField> fields) {
+        Type t{TypeKind::Struct};
+        t.fields = std::move(fields);
+        return t;
+    }
+};
+
+/**
+ * @brief Converts a type to its string representation.
+ */
+std::string typeToString(const Type& type);
+
+} // namespace druk::semantic

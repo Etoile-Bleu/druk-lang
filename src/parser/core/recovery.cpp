@@ -1,36 +1,32 @@
 #include "druk/parser/core/parser.hpp"
 
-namespace druk {
+namespace druk::parser {
 
-// Helpers implementation
-Token Parser::peek() const { return current_; }
-Token Parser::previous() const { return previous_; }
-bool Parser::is_at_end() const { return current_.kind == TokenKind::EndOfFile; }
-
-void Parser::error(Token token, std::string_view message) {
-  if (panic_mode_)
+void Parser::error(lexer::Token token, std::string_view message) {
+  if (panicMode_)
     return;
-  panic_mode_ = true;
+  panicMode_ = true;
 
-  // Report error
-  errors_.report(Error{ErrorLevel::Error,
-                       {token.line, 0, token.offset, token.length},
-                       std::string(message),
-                       ""});
+  util::Diagnostic diagnostic;
+  diagnostic.severity = util::DiagnosticsSeverity::Error;
+  diagnostic.location = {token.line, 0, token.offset, token.length};
+  diagnostic.message = std::string(message);
+  
+  errors_.report(diagnostic);
 }
 
 void Parser::synchronize() {
-  panic_mode_ = false;
-  while (!is_at_end()) {
-    if (previous_.kind == TokenKind::Semicolon)
+  panicMode_ = false;
+  while (!isAtEnd()) {
+    if (previous_.type == lexer::TokenType::Semicolon)
       return;
 
-    switch (current_.kind) {
-    case TokenKind::KwFunction:
-    case TokenKind::KwIf:
-    case TokenKind::KwLoop:
-    case TokenKind::KwReturn:
-    case TokenKind::KwPrint:
+    switch (current_.type) {
+    case lexer::TokenType::KwFunction:
+    case lexer::TokenType::KwIf:
+    case lexer::TokenType::KwLoop:
+    case lexer::TokenType::KwReturn:
+    case lexer::TokenType::KwPrint:
       return;
     default:;
     }
@@ -38,4 +34,4 @@ void Parser::synchronize() {
   }
 }
 
-} // namespace druk
+} // namespace druk::parser

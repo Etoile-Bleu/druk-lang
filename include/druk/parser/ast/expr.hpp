@@ -1,82 +1,106 @@
 #pragma once
 
+#include "druk/codegen/core/value.h"
 #include "druk/parser/ast/node.hpp"
-
 #include "druk/semantic/types.hpp"
 
-#include "druk/codegen/value.hpp"
+namespace druk::parser::ast
+{
 
-namespace druk {
+/**
+ * @brief Base class for expression nodes.
+ */
+class Visitor;
 
-struct Expr : Node {
-  Type type = Type::Void(); // Default to Void or Error?
+/**
+ * @brief Base class for expression nodes.
+ */
+struct Expr : Node
+{
+    semantic::Type type = semantic::Type::makeVoid();
+    virtual void   accept(Visitor* v);
 };
 
-struct BinaryExpr : Expr {
-  Expr *left;
-  Expr *right;
-  // Token in Node is the operator
+struct BinaryExpr : Expr
+{
+    void  accept(Visitor* v) override;
+    Expr* left;
+    Expr* right;
 };
 
-struct UnaryExpr : Expr {
-  Expr *right;
-  // Token in Node is the operator
+struct UnaryExpr : Expr
+{
+    Expr* right;
+    void  accept(Visitor* v) override;
 };
 
-struct LiteralExpr : Expr {
-  Value literal_value;
-  // Token in Node has the value (Number/String/Bool)
+struct LiteralExpr : Expr
+{
+    codegen::Value literalValue;
+    void           accept(Visitor* v) override;
 };
 
-struct GroupingExpr : Expr {
-  Expr *expression;
+struct GroupingExpr : Expr
+{
+    Expr* expression;
+    void  accept(Visitor* v) override;
 };
 
-struct VariableExpr : Expr {
-  Token name;
-  // Token in Node is the identifier
+struct VariableExpr : Expr
+{
+    lexer::Token name;
+    void         accept(Visitor* v) override;
 };
 
-struct AssignmentExpr : Expr {
-  Expr *target;  // Can be VariableExpr, IndexExpr, or MemberAccessExpr
-  Expr *value;
+struct AssignmentExpr : Expr
+{
+    Expr* target;
+    Expr* value;
+    void  accept(Visitor* v) override;
 };
 
-struct CallExpr : Expr {
-  Expr *callee;
-  // Arguments stored as linked list or array?
-  // For arena, linked list is easiest, or array ptr + count.
-  Node **args;
-  uint32_t arg_count;
+struct CallExpr : Expr
+{
+    Expr*    callee;
+    Node**   args;
+    uint32_t argCount;
+    void     accept(Visitor* v) override;
 };
 
-struct LogicalExpr : Expr {
-  Expr *left;
-  Expr *right;
-  // Token is op (and/or)
+struct LogicalExpr : Expr
+{
+    Expr* left;
+    Expr* right;
+    void  accept(Visitor* v) override;
 };
 
-// Arrays
-struct ArrayLiteralExpr : Expr {
-  Expr **elements;
-  uint32_t count;
+struct ArrayLiteralExpr : Expr
+{
+    Expr**   elements;
+    uint32_t count;
+    void     accept(Visitor* v) override;
 };
 
-struct IndexExpr : Expr {
-  Expr *array;  // The array/object being indexed
-  Expr *index;  // The index expression
+struct IndexExpr : Expr
+{
+    Expr* array;
+    Expr* index;
+    void  accept(Visitor* v) override;
 };
 
-// Structs
-struct StructLiteralExpr : Expr {
-  Token *field_names;  // Array of identifiers
-  Expr **field_values; // Array of expressions
-  uint32_t field_count;
+struct StructLiteralExpr : Expr
+{
+    lexer::Token* fieldNames;
+    Expr**        fieldValues;
+    uint32_t      fieldCount;
+    void          accept(Visitor* v) override;
 };
 
-struct MemberAccessExpr : Expr {
-  Expr *object;        // The object being accessed
-  Token member_name;   // Field name
+struct MemberAccessExpr : Expr
+{
+    Expr*        object;
+    lexer::Token memberName;
+    void         accept(Visitor* v) override;
 };
 
-} // namespace druk
+}  // namespace druk::parser::ast

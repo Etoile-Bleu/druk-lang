@@ -1,18 +1,18 @@
 #include "druk/parser/core/parser.hpp"
 
-namespace druk {
+namespace druk::parser {
 
-Parser::Parser(std::string_view source, ArenaAllocator &arena,
-               StringInterner &interner, ErrorReporter &errors)
+Parser::Parser(std::string_view source, util::ArenaAllocator &arena,
+               lexer::StringInterner &interner, util::ErrorHandler &errors)
     : lexer_(source, arena, interner, errors), arena_(arena),
-      interner_(interner), errors_(errors), panic_mode_(false) {
+      interner_(interner), errors_(errors), panicMode_(false) {
   advance(); // Seed current_
 }
 
-std::vector<Stmt *> Parser::parse() {
-  std::vector<Stmt *> statements;
-  while (!is_at_end()) {
-    Stmt *stmt = parse_declaration();
+std::vector<ast::Stmt *> Parser::parse() {
+  std::vector<ast::Stmt *> statements;
+  while (!isAtEnd()) {
+    ast::Stmt *stmt = parseDeclaration();
     if (stmt) {
       statements.push_back(stmt);
     } else {
@@ -22,36 +22,36 @@ std::vector<Stmt *> Parser::parse() {
   return statements;
 }
 
-Token Parser::advance() {
+lexer::Token Parser::advance() {
   previous_ = current_;
   while (true) {
     current_ = lexer_.next();
-    if (current_.kind != TokenKind::Invalid)
+    if (current_.type != lexer::TokenType::Invalid)
       break;
   }
   return previous_;
 }
 
-bool Parser::check(TokenKind kind) const {
-  if (is_at_end())
+bool Parser::check(lexer::TokenType kind) const {
+  if (isAtEnd())
     return false;
-  return current_.kind == kind;
+  return current_.type == kind;
 }
 
-Token Parser::consume(TokenKind kind, std::string_view message) {
+lexer::Token Parser::consume(lexer::TokenType kind, std::string_view message) {
   if (check(kind))
     return advance();
   error(current_, message);
 
   // Still advance to avoid getting stuck in infinite loop
-  if (current_.kind != TokenKind::EndOfFile) {
+  if (current_.type != lexer::TokenType::EndOfFile) {
     advance();
   }
 
   return current_;
 }
 
-bool Parser::match(TokenKind kind) {
+bool Parser::match(lexer::TokenType kind) {
   if (check(kind)) {
     advance();
     return true;
@@ -59,4 +59,10 @@ bool Parser::match(TokenKind kind) {
   return false;
 }
 
-} // namespace druk
+bool Parser::isAtEnd() const { return current_.type == lexer::TokenType::EndOfFile; }
+
+lexer::Token Parser::peek() const { return current_; }
+
+lexer::Token Parser::previous() const { return previous_; }
+
+} // namespace druk::parser
