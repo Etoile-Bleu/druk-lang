@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\dev\druk-lang2\build-installer\CMakeFiles\c2dd2ec6ce89a5ea9de888f8026aa2b2\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{20E4466E-9E14-3C57-B71E-C63D947EB0D6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -41,7 +41,7 @@ TokenType Lexer::checkKeyword(std::string_view text)
         {"ཡང་བསྐྱར་", TokenType::KwWhile},    {"རེ་རེར་", TokenType::KwFor},
         {"རིམ་པ་", TokenType::KwLoop},       {"སླར་ལོག་", TokenType::KwReturn},
         {"བཀོད་", TokenType::KwPrint},       {"འགྲིག་པ་", TokenType::KwMatch},
-        {"སྟོང་པ", TokenType::KwVoid}};
+        {"སྟོང་པ", TokenType::KwVoid},        {"ཅི་མེད", TokenType::KwNil}};
 
     if (auto it = keywords.find(text); it != keywords.end())
     {

@@ -22,8 +22,8 @@ ast::Stmt* Parser::parseStatement()
     if (check(lexer::TokenType::LBrace))
         return parseBlock();
 
-    if (match(lexer::TokenType::KwNumber) || match(lexer::TokenType::KwString) ||
-        match(lexer::TokenType::KwBoolean))
+    if (check(lexer::TokenType::KwNumber) || check(lexer::TokenType::KwString) ||
+        check(lexer::TokenType::KwBoolean))
     {
         return parseVarDeclaration();
     }

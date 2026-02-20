@@ -126,4 +126,19 @@ class ConstantString : public Constant
     std::shared_ptr<Type> type_;
 };
 
+class ConstantNil : public Constant
+{
+   public:
+    explicit ConstantNil(std::shared_ptr<Type> type);
+
+    std::string           toString() const override;
+    std::shared_ptr<Type> getType() const override
+    {
+        return type_;
+    }
+
+   private:
+    std::shared_ptr<Type> type_;
+};
+
 }  // namespace druk::ir

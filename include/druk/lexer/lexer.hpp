@@ -42,7 +42,7 @@ private:
   // Scanners
   Token scanIdentifier();
   Token scanNumber();
-  Token scanString();
+  Token scanString(bool isResume = false);
 
   Token makeToken(TokenType type);
   Token makeErrorToken(const char *message);
@@ -62,6 +62,8 @@ private:
   uint32_t startOffset_ = 0;   // Start of current token
   uint32_t currentOffset_ = 0; // Current scanning position
   uint32_t line_ = 1;
+
+  uint32_t interpolationDepth_ = 0;
 };
 
 } // namespace druk::lexer

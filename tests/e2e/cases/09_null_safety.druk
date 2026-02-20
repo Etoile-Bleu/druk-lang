@@ -1,0 +1,9 @@
+གྲངས་? val = ཅི་མེད;
+བཀོད་ "Nil check: {val == ཅི་མེད}";
+
+val = ༡༠༠;
+བཀོད་ "Value check: {val == ༡༠༠}";
+བཀོད་ "Unwrapped: {val!}";
+
+གྲངས་? non_nil = ༥༠;
+བཀོད་ "Unwrap sum: {non_nil! + ༥༠}";

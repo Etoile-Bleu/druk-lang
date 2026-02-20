@@ -16,26 +16,38 @@ namespace druk::codegen
 
 void CodeGenerator::visitFunc(parser::ast::FuncDecl* stmt)
 {
-    auto  funcTy   = ir::Type::getVoidTy();
     auto  funcName = std::string(stmt->name.text(source_));
-    auto  func     = std::make_unique<ir::Function>(funcName, funcTy, &module_);
-    auto* funcPtr  = func.get();
-
-    // Save current context
-    auto*                                       savedInsertBlock = builder_.getInsertBlock();
-    auto*                                       prevFunc         = currentFunction_;
-    std::unordered_map<std::string, ir::Value*> prevVariables    = std::move(variables_);
-
-    for (uint32_t i = 0; i < stmt->paramCount; ++i)
+    ir::Function* funcPtr = nullptr;
+    
+    auto it = functions_.find(funcName);
+    if (it != functions_.end())
     {
-        auto paramName = std::string(stmt->params[i].name.text(source_));
-        auto param     = std::make_unique<ir::Parameter>(paramName, ir::Type::getInt64Ty(), i);
-        funcPtr->addParameter(std::move(param));
+        funcPtr = it->second;
+    }
+    else
+    {
+        // This shouldn't happen for top-level functions in two-pass,
+        // but might for nested functions if we don't pre-register them.
+        auto funcTy = ir::Type::getInt64Ty();
+        auto func   = std::make_unique<ir::Function>(funcName, funcTy, &module_);
+        funcPtr     = func.get();
+        
+        for (uint32_t i = 0; i < stmt->paramCount; ++i)
+        {
+            auto paramName = std::string(stmt->params[i].name.text(source_));
+            auto param     = std::make_unique<ir::Parameter>(paramName, ir::Type::getInt64Ty(), i);
+            funcPtr->addParameter(std::move(param));
+        }
+        functions_[funcName] = funcPtr;
+        module_.addFunction(std::move(func));
     }
 
-    functions_[funcName] = funcPtr;
-    currentFunction_     = funcPtr;
-    variables_.clear();
+    // Save current context
+    auto*         savedInsertBlock = builder_.getInsertBlock();
+    auto*         prevFunc         = currentFunction_;
+
+    currentFunction_ = funcPtr;
+    variables_stack_.emplace_back(); // New scope
 
     auto  entryBlock    = std::make_unique<ir::BasicBlock>("entry", funcPtr);
     auto* entryBlockPtr = entryBlock.get();
@@ -49,8 +61,8 @@ void CodeGenerator::visitFunc(parser::ast::FuncDecl* stmt)
         auto* alloca  = builder_.createAlloca(ir::Type::getInt64Ty());
         auto* loadVal = builder_.createLoad(param);
         builder_.createStore(loadVal, alloca);
-        auto paramName        = std::string(stmt->params[i].name.text(source_));
-        variables_[paramName] = alloca;
+        auto paramName                        = std::string(stmt->params[i].name.text(source_));
+        variables_stack_.back()[paramName]    = alloca;
     }
 
     visit(stmt->body);
@@ -61,10 +73,8 @@ void CodeGenerator::visitFunc(parser::ast::FuncDecl* stmt)
         builder_.createRet();
     }
 
-    module_.addFunction(std::move(func));
-
     // Restore context
-    variables_       = std::move(prevVariables);
+    variables_stack_.pop_back();
     currentFunction_ = prevFunc;
     builder_.setInsertPoint(savedInsertBlock);
 }

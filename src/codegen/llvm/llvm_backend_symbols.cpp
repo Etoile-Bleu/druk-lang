@@ -15,6 +15,8 @@ extern "C"
     void druk_jit_subtract(const PackedValue* a, const PackedValue* b, PackedValue* out);
     void druk_jit_multiply(const PackedValue* a, const PackedValue* b, PackedValue* out);
     void druk_jit_divide(const PackedValue* a, const PackedValue* b, PackedValue* out);
+    void druk_jit_and(const PackedValue* a, const PackedValue* b, PackedValue* out);
+    void druk_jit_or(const PackedValue* a, const PackedValue* b, PackedValue* out);
     void druk_jit_negate(const PackedValue* a, PackedValue* out);
     void druk_jit_equal(const PackedValue* a, const PackedValue* b, PackedValue* out);
     void druk_jit_less(const PackedValue* a, const PackedValue* b, PackedValue* out);
@@ -50,7 +52,13 @@ extern "C"
     void druk_jit_register_function(druk::codegen::ObjFunction* function,
                                     void (*fn)(PackedValue* out));
     void druk_jit_set_compile_handler(DrukJitCompileFn fn);
+    void druk_jit_string_literal(const char* chars, size_t length, PackedValue* out);
+    void druk_jit_value_raw_function(void* fn, PackedValue* out);
+    void druk_jit_to_string(const PackedValue* val, PackedValue* out);
+    void druk_jit_string_concat(const PackedValue* l, const PackedValue* r, PackedValue* out);
     int64_t druk_jit_value_as_int(const PackedValue* value);
+    int32_t druk_jit_value_as_bool_int(const PackedValue* value);
+    void    druk_jit_panic_unwrap();
 }
 
 namespace druk::codegen
@@ -78,6 +86,10 @@ void LLVMBackend::register_runtime_symbols()
     symbols[mangle("druk_jit_multiply")]   = {llvm::orc::ExecutorAddr::fromPtr(&druk_jit_multiply),
                                               llvm::JITSymbolFlags::Exported};
     symbols[mangle("druk_jit_divide")]     = {llvm::orc::ExecutorAddr::fromPtr(&druk_jit_divide),
+                                              llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_and")]        = {llvm::orc::ExecutorAddr::fromPtr(&druk_jit_and),
+                                              llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_or")]         = {llvm::orc::ExecutorAddr::fromPtr(&druk_jit_or),
                                               llvm::JITSymbolFlags::Exported};
     symbols[mangle("druk_jit_negate")]     = {llvm::orc::ExecutorAddr::fromPtr(&druk_jit_negate),
                                               llvm::JITSymbolFlags::Exported};
@@ -144,11 +156,17 @@ void LLVMBackend::register_runtime_symbols()
     symbols[mangle("druk_jit_value_raw_function")] = {
         llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_raw_function),
         llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_to_string")] = {
+        llvm::orc::ExecutorAddr::fromPtr(&druk_jit_to_string), llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_string_concat")] = {
+        llvm::orc::ExecutorAddr::fromPtr(&druk_jit_string_concat), llvm::JITSymbolFlags::Exported};
     symbols[mangle("druk_jit_value_as_int")] = {
         llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_as_int), llvm::JITSymbolFlags::Exported};
     symbols[mangle("druk_jit_value_as_bool_int")] = {
         llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_as_bool_int),
         llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_panic_unwrap")] = {
+        llvm::orc::ExecutorAddr::fromPtr(&druk_jit_panic_unwrap), llvm::JITSymbolFlags::Exported};
 
     llvm::cantFail(jd.define(llvm::orc::absoluteSymbols(std::move(symbols))));
 }

@@ -90,6 +90,22 @@ llvm::Value* LLVMBackend::get_llvm_value(ir::Value* value)
             {llvmFunc, alloc});
         return alloc;
     }
+    else if (auto* cNil = dynamic_cast<ir::ConstantNil*>(value))
+    {
+        llvm::Value* alloc = create_entry_alloca(packed_value_ty, "const_nil");
+
+        llvm::Value* typePtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 0);
+        ctx_->builder->CreateStore(
+            llvm::ConstantInt::get(i8_ty, static_cast<uint8_t>(ValueType::Nil)), typePtr);
+
+        llvm::Value* dataPtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 2);
+        ctx_->builder->CreateStore(llvm::ConstantInt::get(i64_ty, 0), dataPtr);
+
+        llvm::Value* extraPtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 3);
+        ctx_->builder->CreateStore(llvm::ConstantInt::get(i64_ty, 0), extraPtr);
+
+        return alloc;
+    }
     return nullptr;
 }
 

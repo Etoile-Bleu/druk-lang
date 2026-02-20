@@ -11,6 +11,7 @@ enum class Opcode
     Mul,
     Div,
     Mod,
+    Neg,
 
     // Comparison
     Equal,
@@ -53,7 +54,14 @@ enum class Opcode
     // Type conversion
     IntToFloat,
     FloatToInt,
-    Bitcast
+    Bitcast,
+    ToString,
+
+    // Strings
+    StringConcat,
+
+    // Null safety
+    Unwrap
 };
 
 }  // namespace druk::ir

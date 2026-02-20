@@ -5,13 +5,19 @@ namespace druk::parser
 
 ast::Stmt* Parser::parseDeclaration()
 {
-    if (match(lexer::TokenType::KwFunction))
+    // 1. Function declaration: function name(
+    if (check(lexer::TokenType::KwFunction) && 
+        peekNext().type == lexer::TokenType::Identifier && 
+        peekNextNext().type == lexer::TokenType::LParen)
     {
+        match(lexer::TokenType::KwFunction);
         return parseFunction();
     }
 
+    // 2. Variable declaration: Type name ...
     if (check(lexer::TokenType::KwNumber) || check(lexer::TokenType::KwString) ||
-        check(lexer::TokenType::KwBoolean) ||
+        check(lexer::TokenType::KwBoolean) || 
+        (check(lexer::TokenType::KwFunction) && peekNext().type == lexer::TokenType::Identifier) ||
         (check(lexer::TokenType::LParen) && peekNext().type != lexer::TokenType::Identifier))
     {
         return parseVarDeclaration();

@@ -5,7 +5,7 @@ namespace druk::semantic {
 bool Type::operator==(const Type& other) const {
     if (kind != other.kind) return false;
     
-    if (kind == TypeKind::Array) {
+    if (kind == TypeKind::Array || kind == TypeKind::Option) {
         if (!elementType || !other.elementType) return elementType == other.elementType;
         return *elementType == *other.elementType;
     }
@@ -34,6 +34,8 @@ std::string typeToString(const Type& type) {
         case TypeKind::Function: return "function";
         case TypeKind::Array:
             return "Array<" + (type.elementType ? typeToString(*type.elementType) : "unknown") + ">";
+        case TypeKind::Option:
+            return (type.elementType ? typeToString(*type.elementType) : "unknown") + "?";
         case TypeKind::Struct:
             return "struct";
         case TypeKind::Error: return "error";

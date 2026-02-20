@@ -18,13 +18,9 @@ void CodeGenerator::visitMemberAccess(parser::ast::MemberAccessExpr* expr)
     lastValue_ = nullptr;
 }
 
-void CodeGenerator::visitLogical(parser::ast::LogicalExpr* expr)
-{
-    lastValue_ = nullptr;
-}
-
 void CodeGenerator::visitBuiltinType(parser::ast::BuiltinType* type) {}
 void CodeGenerator::visitArrayType(parser::ast::ArrayType* type) {}
 void CodeGenerator::visitFunctionType(parser::ast::FunctionType* type) {}
+void CodeGenerator::visitOptionType(parser::ast::OptionType* type) {}
 
 }  // namespace druk::codegen

@@ -183,4 +183,65 @@ Instruction* IRBuilder::createPrint(Value* val)
     return ptr;
 }
 
+Instruction* IRBuilder::createToString(Value* val)
+{
+    auto inst = std::make_unique<ToStringInst>(val);
+    auto ptr  = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createStringConcat(Value* l, Value* r)
+{
+    auto inst = std::make_unique<StringConcatInst>(l, r);
+    auto ptr  = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createUnwrap(Value* val, const std::string& name)
+{
+    auto inst = std::make_unique<UnwrapInst>(val);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createAnd(Value* left, Value* right, const std::string& name)
+{
+    auto inst = std::make_unique<BinaryInst>(Opcode::And, left, right);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createOr(Value* left, Value* right, const std::string& name)
+{
+    auto inst = std::make_unique<BinaryInst>(Opcode::Or, left, right);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createNeg(Value* val, const std::string& name)
+{
+    auto inst = std::make_unique<UnaryInst>(Opcode::Neg, val);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
+Instruction* IRBuilder::createNot(Value* val, const std::string& name)
+{
+    auto inst = std::make_unique<UnaryInst>(Opcode::Not, val);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
 }  // namespace druk::ir

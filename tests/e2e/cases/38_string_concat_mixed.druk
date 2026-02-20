@@ -1,0 +1,6 @@
+ཡིག་འབྲུ་ hello = "Hello";
+ཡིག་འབྲུ་ world = "World";
+བཀོད་ hello + " " + world + "!";
+གྲངས་ n = ༡༢༣;
+བཀོད་ hello + " " + n;
+བཀོད་ n + " is my number";

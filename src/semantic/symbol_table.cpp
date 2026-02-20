@@ -31,4 +31,8 @@ Symbol* SymbolTable::resolve(const std::string& name) {
     return currentScope_->resolve(name);
 }
 
+Symbol* SymbolTable::resolveLocal(const std::string& name) {
+    return currentScope_->resolveLocal(name);
+}
+
 } // namespace druk::semantic

@@ -11,25 +11,24 @@ namespace druk::codegen
 
 void CodeGenerator::visitLambda(parser::ast::LambdaExpr* expr)
 {
-    auto  funcTy     = ir::Type::getVoidTy();
+    auto  funcTy     = ir::Type::getInt64Ty();
     auto  lambdaName = "lambda_" + std::to_string(lambdaCount_++);
     auto  lambdaFunc = std::make_unique<ir::Function>(lambdaName, funcTy, &module_);
     auto* lambdaPtr  = lambdaFunc.get();
 
     // Save current context
-    auto*                                       savedInsertBlock = builder_.getInsertBlock();
-    auto*                                       prevFunc         = currentFunction_;
-    std::unordered_map<std::string, ir::Value*> prevVariables    = std::move(variables_);
+    auto*         savedInsertBlock = builder_.getInsertBlock();
+    auto*         prevFunc         = currentFunction_;
+
+    currentFunction_ = lambdaPtr;
+    variables_stack_.emplace_back(); // New scope
 
     for (uint32_t i = 0; i < expr->paramCount; ++i)
     {
-        auto paramName = std::string(expr->params[i].text(source_));
+        auto paramName = std::string(expr->params[i].name.text(source_));
         auto param     = std::make_unique<ir::Parameter>(paramName, ir::Type::getInt64Ty(), i);
         lambdaPtr->addParameter(std::move(param));
     }
-
-    currentFunction_ = lambdaPtr;
-    variables_.clear();
 
     auto  entryBlock    = std::make_unique<ir::BasicBlock>("entry", lambdaPtr);
     auto* entryBlockPtr = entryBlock.get();
@@ -43,8 +42,8 @@ void CodeGenerator::visitLambda(parser::ast::LambdaExpr* expr)
         auto* alloca  = builder_.createAlloca(ir::Type::getInt64Ty());
         auto* loadVal = builder_.createLoad(param);
         builder_.createStore(loadVal, alloca);
-        auto paramName        = std::string(expr->params[i].text(source_));
-        variables_[paramName] = alloca;
+        auto paramName                        = std::string(expr->params[i].name.text(source_));
+        variables_stack_.back()[paramName]    = alloca;
     }
 
     visit(expr->body);
@@ -61,7 +60,7 @@ void CodeGenerator::visitLambda(parser::ast::LambdaExpr* expr)
     module_.addFunction(std::move(lambdaFunc));
 
     // Restore context
-    variables_       = std::move(prevVariables);
+    variables_stack_.pop_back();
     currentFunction_ = prevFunc;
     builder_.setInsertPoint(savedInsertBlock);
 

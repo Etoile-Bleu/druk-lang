@@ -10,9 +10,8 @@ Analyzer::Analyzer(util::ErrorHandler& errors, lexer::StringInterner& interner, 
 bool Analyzer::analyze(const std::vector<parser::ast::Stmt*>& statements) {
     // Phase 1: Name Resolution (Scoping and binding)
     NameResolver resolver(errors_, table_, source_);
-    for (auto* stmt : statements) {
-        resolver.resolve(stmt);
-    }
+    resolver.defineSymbols(statements);
+    resolver.resolveBodies(statements);
     
     if (errors_.hasErrors()) return false;
     

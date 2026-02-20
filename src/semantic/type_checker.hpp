@@ -4,6 +4,10 @@
 #include "druk/semantic/symbol_table.hpp"
 #include "druk/util/error_handler.hpp"
 
+namespace druk::ir {
+    class Function;
+}
+
 namespace druk::semantic
 {
 
@@ -45,16 +49,31 @@ class TypeChecker : public parser::ast::Visitor
     void visitStructLiteral(parser::ast::StructLiteralExpr* expr) override;
     void visitMemberAccess(parser::ast::MemberAccessExpr* expr) override;
     void visitLambda(parser::ast::LambdaExpr* expr) override;
+    void visitInterpolatedStringExpr(parser::ast::InterpolatedStringExpr* expr) override;
+    void visitUnwrapExpr(parser::ast::UnwrapExpr* expr) override;
 
     void visitBuiltinType(parser::ast::BuiltinType* type) override;
     void visitArrayType(parser::ast::ArrayType* type) override;
     void visitFunctionType(parser::ast::FunctionType* type) override;
+    void visitOptionType(parser::ast::OptionType* type) override;
 
    private:
     util::ErrorHandler& errors_;
     SymbolTable&        table_;
     std::string_view    source_;
     Type                currentType_ = Type::makeError();
+
+    ir::Function* currentFunction_ = nullptr;
+    uint32_t      lambdaCount_     = 0;
+
+    void error(const lexer::Token& token, std::string message)
+    {
+        util::Diagnostic diag;
+        diag.severity = util::DiagnosticsSeverity::Error;
+        diag.location = {token.line, 0, token.offset, token.length};
+        diag.message  = std::move(message);
+        errors_.report(diag);
+    }
 };
 
 }  // namespace druk::semantic

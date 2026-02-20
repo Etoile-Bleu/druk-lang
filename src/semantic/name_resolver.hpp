@@ -14,6 +14,9 @@ class NameResolver {
 public:
     NameResolver(util::ErrorHandler& errors, SymbolTable& table, std::string_view source);
     
+    void defineSymbols(const std::vector<parser::ast::Stmt*>& statements);
+    void resolveBodies(const std::vector<parser::ast::Stmt*>& statements);
+    
     void resolve(parser::ast::Node* node);
 
 private:

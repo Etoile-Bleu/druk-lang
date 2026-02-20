@@ -51,10 +51,13 @@ class CodeGenerator : public parser::ast::Visitor
     void visitStructLiteral(parser::ast::StructLiteralExpr* expr) override;
     void visitMemberAccess(parser::ast::MemberAccessExpr* expr) override;
     void visitLambda(parser::ast::LambdaExpr* expr) override;
+    void visitInterpolatedStringExpr(parser::ast::InterpolatedStringExpr* expr) override;
+    void visitUnwrapExpr(parser::ast::UnwrapExpr* expr) override;
 
     void visitBuiltinType(parser::ast::BuiltinType* type) override;
     void visitArrayType(parser::ast::ArrayType* type) override;
     void visitFunctionType(parser::ast::FunctionType* type) override;
+    void visitOptionType(parser::ast::OptionType* type) override;
 
    private:
     void visit(parser::ast::Stmt* stmt);
@@ -68,8 +71,8 @@ class CodeGenerator : public parser::ast::Visitor
     ir::Value*          lastValue_ = nullptr;  // Track result of last visited expression
 
     // Symbol tables
-    std::unordered_map<std::string, ir::Value*>    variables_;  // Variable name -> alloca
-    std::unordered_map<std::string, ir::Function*> functions_;  // Function name -> Function
+    std::vector<std::unordered_map<std::string, ir::Value*>> variables_stack_; // Stack of scopes
+    std::unordered_map<std::string, ir::Function*>           functions_;       // Function name -> Function
 
     // Current function context (for parameter resolution)
     ir::Function* currentFunction_ = nullptr;

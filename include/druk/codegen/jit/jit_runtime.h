@@ -36,5 +36,6 @@ extern "C"
     int32_t druk_jit_value_as_bool_int(const PackedValue* value);
     void    druk_jit_string_literal(const char* data, size_t len, PackedValue* out);
     void    druk_jit_value_raw_function(void* ptr, PackedValue* out);
+    void    druk_jit_panic_unwrap();
 
 }  // extern "C"

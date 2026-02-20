@@ -61,6 +61,10 @@ void TypeChecker::visitBinary(parser::ast::BinaryExpr* expr)
             currentType_ = Type::makeInt();
         }
     }
+    else if (left == Type::makeString() && right == Type::makeString() && expr->token.type == lexer::TokenType::Plus)
+    {
+        currentType_ = Type::makeString();
+    }
     else
     {
         currentType_ = Type::makeError();

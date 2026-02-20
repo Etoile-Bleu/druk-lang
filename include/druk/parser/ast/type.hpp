@@ -28,4 +28,10 @@ struct FunctionType : Type
     void     accept(Visitor* v) override;
 };
 
+struct OptionType : Type
+{
+    Type* innerType;
+    void  accept(Visitor* v) override;
+};
+
 }  // namespace druk::parser::ast

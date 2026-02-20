@@ -11,8 +11,9 @@ Parser::Parser(std::string_view source, util::ArenaAllocator& arena,
       errors_(errors),
       panicMode_(false)
 {
-    current_ = lexer_.next();
-    next_    = lexer_.next();
+    current_  = lexer_.next();
+    next_     = lexer_.next();
+    nextNext_ = lexer_.next();
 }
 
 std::vector<ast::Stmt*> Parser::parse()
@@ -33,9 +34,10 @@ lexer::Token Parser::advance()
 {
     previous_ = current_;
     current_  = next_;
-    if (current_.type != lexer::TokenType::EndOfFile)
+    next_     = nextNext_;
+    if (next_.type != lexer::TokenType::EndOfFile)
     {
-        next_ = lexer_.next();
+        nextNext_ = lexer_.next();
     }
     return previous_;
 }
@@ -78,6 +80,10 @@ lexer::Token Parser::peek() const
 lexer::Token Parser::peekNext() const
 {
     return next_;
+}
+lexer::Token Parser::peekNextNext() const
+{
+    return nextNext_;
 }
 lexer::Token Parser::previous() const
 {

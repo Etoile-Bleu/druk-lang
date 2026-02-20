@@ -34,11 +34,49 @@ void TypeChecker::visitVar(parser::ast::VarDecl* stmt)
     if (stmt->initializer)
     {
         Type initType = analyze(stmt->initializer);
-        if (initType != expected && initType != Type::makeError())
+        if (initType.kind == TypeKind::Void && expected.kind != TypeKind::Option)
         {
+            error(stmt->name, "Cannot assign nil to a non-optional type.");
+        }
+        else if (initType != expected && initType != Type::makeError() && initType.kind != TypeKind::Void)
+        {
+            if (expected.kind == TypeKind::Option && initType == *expected.elementType)
+            {
+                // Assigning 'T' to 'T?' is allowed
+            }
+            else if (initType.kind == TypeKind::Array)
+            {
+                Type* baseType = &initType;
+                while (baseType->kind == TypeKind::Array && baseType->elementType)
+                {
+                    baseType = baseType->elementType.get();
+                }
+
+                if (baseType->kind == expected.kind)
+                {
+                    expected = initType;
+                }
+                else
+                {
+                    error(stmt->name, "Type mismatch: cannot assign " + typeToString(initType) + " to " + typeToString(expected) + ".");
+                }
+            }
+            else
+            {
+                error(stmt->name, "Type mismatch: cannot assign " + typeToString(initType) + " to " + typeToString(expected) + ".");
+            }
         }
     }
-    table_.define(std::string(stmt->name.text(source_)), {stmt->name, expected});
+    
+    auto name = std::string(stmt->name.text(source_));
+    if (auto* sym = table_.resolveLocal(name))
+    {
+        sym->type = expected;
+    }
+    else
+    {
+        table_.define(name, {stmt->name, expected});
+    }
 }
 
 void TypeChecker::visitFunc(parser::ast::FuncDecl* stmt)
@@ -46,8 +84,16 @@ void TypeChecker::visitFunc(parser::ast::FuncDecl* stmt)
     table_.enterScope();
     for (uint32_t i = 0; i < stmt->paramCount; ++i)
     {
-        table_.define(std::string(stmt->params[i].name.text(source_)),
-                      {stmt->params[i].name, evaluate(stmt->params[i].type)});
+        auto name = std::string(stmt->params[i].name.text(source_));
+        Type type = evaluate(stmt->params[i].type);
+        if (auto* sym = table_.resolveLocal(name))
+        {
+            sym->type = type;
+        }
+        else
+        {
+            table_.define(name, {stmt->params[i].name, type});
+        }
     }
     check(stmt->body);
     table_.exitScope();

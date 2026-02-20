@@ -60,8 +60,18 @@ Token Lexer::next()
         case ')':
             return makeToken(TokenType::RParen);
         case '{':
+            if (interpolationDepth_ > 0) interpolationDepth_++;
             return makeToken(TokenType::LBrace);
         case '}':
+            if (interpolationDepth_ > 0)
+            {
+                interpolationDepth_--;
+                if (interpolationDepth_ == 0)
+                {
+                    // We are closing the interpolated expression, resume scanning the string
+                    return scanString(true); 
+                }
+            }
             return makeToken(TokenType::RBrace);
         case '[':
             return makeToken(TokenType::LBracket);
@@ -85,6 +95,8 @@ Token Lexer::next()
             return makeToken(TokenType::Slash);
         case '_':
             return makeToken(TokenType::Underscore);
+        case '?':
+            return makeToken(TokenType::Question);
         case '!':
             return makeToken(match('=') ? TokenType::BangEqual : TokenType::Bang);
         case '&':

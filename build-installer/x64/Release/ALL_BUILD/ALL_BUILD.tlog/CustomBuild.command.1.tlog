@@ -1,0 +1,10 @@
+^C:\DEV\DRUK-LANG2\TOOLS\INSTALLER\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/dev/druk-lang2/tools/installer -BC:/dev/druk-lang2/build-installer --check-stamp-file C:/dev/druk-lang2/build-installer/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

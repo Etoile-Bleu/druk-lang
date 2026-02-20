@@ -103,4 +103,17 @@ struct MemberAccessExpr : Expr
     void         accept(Visitor* v) override;
 };
 
+struct InterpolatedStringExpr : Expr
+{
+    Expr**   parts;
+    uint32_t count;
+    void     accept(Visitor* v) override;
+};
+
+struct UnwrapExpr : Expr
+{
+    Expr* operand;
+    void  accept(Visitor* v) override;
+};
+
 }  // namespace druk::parser::ast

@@ -21,6 +21,7 @@ enum class TypeKind
     Function,
     Array,
     Struct,
+    Option,
     Error
 };
 
@@ -77,6 +78,13 @@ struct Type
     static Type makeArray(Type element)
     {
         Type t{TypeKind::Array};
+        t.elementType = std::make_shared<Type>(element);
+        return t;
+    }
+
+    static Type makeOption(Type element)
+    {
+        Type t{TypeKind::Option};
         t.elementType = std::make_shared<Type>(element);
         return t;
     }

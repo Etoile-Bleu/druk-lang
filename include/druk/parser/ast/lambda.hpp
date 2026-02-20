@@ -10,12 +10,15 @@ namespace druk::parser::ast
 {
 
 struct Stmt;
+struct Type;
+struct Param;
 class Visitor;
 
 struct LambdaExpr : Expr
 {
-    lexer::Token* params;
+    Param*        params;
     uint32_t      paramCount;
+    Type*         returnType;
     Stmt*         body;
     void          accept(Visitor* v) override;
 };

@@ -1,0 +1,7 @@
+C:\dev\druk-lang2\tools\installer\src\main.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\main.obj
+C:\dev\druk-lang2\tools\installer\src\ui_window.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\ui_window.obj
+C:\dev\druk-lang2\tools\installer\src\ui_wizard.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\ui_wizard.obj
+C:\dev\druk-lang2\tools\installer\src\ui_theme.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\ui_theme.obj
+C:\dev\druk-lang2\tools\installer\src\logic_engine.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\logic_engine.obj
+C:\dev\druk-lang2\tools\installer\src\logic_system.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\logic_system.obj
+C:\dev\druk-lang2\tools\installer\src\logic_rollback.cpp;C:\dev\druk-lang2\build-installer\druk-installer.dir\Release\logic_rollback.obj

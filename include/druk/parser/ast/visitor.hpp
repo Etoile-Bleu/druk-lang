@@ -28,6 +28,8 @@ struct IndexExpr;
 struct StructLiteralExpr;
 struct MemberAccessExpr;
 struct LambdaExpr;
+struct InterpolatedStringExpr;
+struct UnwrapExpr;
 
 struct Stmt;
 struct Expr;
@@ -36,6 +38,7 @@ struct Type;
 struct BuiltinType;
 struct ArrayType;
 struct FunctionType;
+struct OptionType;
 
 class Visitor
 {
@@ -71,10 +74,14 @@ class Visitor
     virtual void visitStructLiteral(StructLiteralExpr* expr) = 0;
     virtual void visitMemberAccess(MemberAccessExpr* expr)   = 0;
     virtual void visitLambda(LambdaExpr* expr)               = 0;
+    virtual void visitInterpolatedStringExpr(InterpolatedStringExpr* expr) = 0;
 
     virtual void visitBuiltinType(BuiltinType* type)   = 0;
     virtual void visitArrayType(ArrayType* type)       = 0;
     virtual void visitFunctionType(FunctionType* type) = 0;
+    virtual void visitOptionType(OptionType* type)     = 0;
+    
+    virtual void visitUnwrapExpr(UnwrapExpr* expr)     = 0;
 };
 
 }  // namespace druk::parser::ast

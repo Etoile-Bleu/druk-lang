@@ -19,6 +19,7 @@ LLVMBackend::CompiledFunc LLVMBackend::compileFunction(ir::Function* function)
     ctx_->ir_values.clear();
     ctx_->ir_blocks.clear();
     ctx_->ir_functions.clear();
+    ctx_->ir_wrappers.clear();
 
     llvm::Type*       i8_ty      = llvm::Type::getInt8Ty(*ctx_->context);
     llvm::Type*       i64_ty     = llvm::Type::getInt64Ty(*ctx_->context);
@@ -29,67 +30,8 @@ LLVMBackend::CompiledFunc LLVMBackend::compileFunction(ir::Function* function)
 
     if (irModule)
     {
-        for (const auto& [name, irFunc] : irModule->getFunctions())
-        {
-            std::string funcName = irFunc->getName();
-            if (funcName.empty())
-                funcName = "main";
+        prepare_functions_and_wrappers(*irModule, packed_value_ty, packed_ptr_ty);
 
-            // 1. Create the implementation function: void (out*, arg1*, arg2*, ...)
-            std::vector<llvm::Type*> implParamTypes;
-            implParamTypes.push_back(packed_ptr_ty);  // out
-            for (size_t i = 0; i < irFunc->getParameterCount(); ++i)
-                implParamTypes.push_back(packed_ptr_ty);
-
-            llvm::FunctionType* implFuncType = llvm::FunctionType::get(
-                llvm::Type::getVoidTy(*ctx_->context), implParamTypes, false);
-
-            std::string     implName = funcName + "_impl";
-            llvm::Function* llvmImpl = llvm::Function::Create(
-                implFuncType, llvm::Function::ExternalLinkage, implName, ctx_->module.get());
-
-            ctx_->ir_functions[irFunc.get()] = llvmImpl;
-
-            // 2. Create the wrapper function: void (out*)
-            // This is the one that JIT runtime will see as the function address.
-            llvm::FunctionType* wrapFuncType = llvm::FunctionType::get(
-                llvm::Type::getVoidTy(*ctx_->context), {packed_ptr_ty}, false);
-
-            llvm::Function* llvmWrap = llvm::Function::Create(
-                wrapFuncType, llvm::Function::ExternalLinkage, funcName, ctx_->module.get());
-
-            ctx_->ir_wrappers[irFunc.get()] = llvmWrap;
-            ctx_->llvm_function             = llvmWrap;  // Set for create_entry_alloca
-
-            llvm::BasicBlock* wrapBB = llvm::BasicBlock::Create(*ctx_->context, "entry", llvmWrap);
-            ctx_->builder->SetInsertPoint(wrapBB);
-
-            std::vector<llvm::Value*> callArgs;
-            callArgs.push_back(llvmWrap->getArg(0));  // out
-
-            for (size_t i = 0; i < irFunc->getParameterCount(); ++i)
-            {
-                llvm::Value* argOut =
-                    create_entry_alloca(packed_value_ty, "arg_" + std::to_string(i));
-                ctx_->builder->CreateCall(
-                    ctx_->module->getOrInsertFunction(
-                        "druk_jit_get_arg",
-                        llvm::FunctionType::get(
-                            llvm::Type::getVoidTy(*ctx_->context),
-                            {llvm::Type::getInt32Ty(*ctx_->context), packed_ptr_ty}, false)),
-                    {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx_->context),
-                                            (uint32_t)i + 1),
-                     argOut});
-                callArgs.push_back(argOut);
-            }
-
-            ctx_->builder->CreateCall(llvmImpl, callArgs);
-            ctx_->builder->CreateRetVoid();
-        }
-    }
-
-    if (irModule)
-    {
         for (const auto& [name, irFunc] : irModule->getFunctions())
         {
             compile_single_function(irFunc.get(), packed_value_ty, packed_ptr_ty, i64_ty);
@@ -107,8 +49,8 @@ LLVMBackend::CompiledFunc LLVMBackend::compileFunction(ir::Function* function)
     llvm::cantFail(ctx_->jit->addIRModule(std::move(tsm)));
 
     std::string func_name = function->getName();
-    if (func_name.empty())
-        func_name = "main";
+    if (func_name.empty() || func_name == "main")
+        func_name = "druk_entry";
 
     if (auto sym_lookup = ctx_->jit->lookup(func_name))
     {
@@ -121,6 +63,67 @@ LLVMBackend::CompiledFunc LLVMBackend::compileFunction(ir::Function* function)
         return compiled;
     }
     return nullptr;
+}
+
+void LLVMBackend::prepare_functions_and_wrappers(ir::Module&        module,
+                                                 llvm::StructType*  packed_value_ty,
+                                                 llvm::PointerType* packed_ptr_ty)
+{
+    for (const auto& [name, irFunc] : module.getFunctions())
+    {
+        std::string funcName = irFunc->getName();
+        if (funcName.empty() || funcName == "main")
+            funcName = "druk_entry";
+
+        // 1. Create the implementation function: void (out*, arg1*, arg2*, ...)
+        std::vector<llvm::Type*> implParamTypes;
+        implParamTypes.push_back(packed_ptr_ty);  // out
+        for (size_t i = 0; i < irFunc->getParameterCount(); ++i)
+            implParamTypes.push_back(packed_ptr_ty);
+
+        llvm::FunctionType* implFuncType =
+            llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context), implParamTypes, false);
+
+        std::string     implName = funcName + "_impl";
+        llvm::Function* llvmImpl = llvm::Function::Create(
+            implFuncType, llvm::Function::ExternalLinkage, implName, ctx_->module.get());
+
+        ctx_->ir_functions[irFunc.get()] = llvmImpl;
+
+        // 2. Create the wrapper function: void (out*)
+        // This is the one that JIT runtime will see as the function address.
+        llvm::FunctionType* wrapFuncType =
+            llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context), {packed_ptr_ty}, false);
+
+        llvm::Function* llvmWrap = llvm::Function::Create(
+            wrapFuncType, llvm::Function::ExternalLinkage, funcName, ctx_->module.get());
+
+        ctx_->ir_wrappers[irFunc.get()] = llvmWrap;
+        ctx_->llvm_function             = llvmWrap;  // Set for create_entry_alloca
+
+        llvm::BasicBlock* wrapBB = llvm::BasicBlock::Create(*ctx_->context, "entry", llvmWrap);
+        ctx_->builder->SetInsertPoint(wrapBB);
+
+        std::vector<llvm::Value*> callArgs;
+        callArgs.push_back(llvmWrap->getArg(0));  // out
+
+        for (size_t i = 0; i < irFunc->getParameterCount(); ++i)
+        {
+            llvm::Value* argOut = create_entry_alloca(packed_value_ty, "arg_" + std::to_string(i));
+            ctx_->builder->CreateCall(
+                ctx_->module->getOrInsertFunction(
+                    "druk_jit_get_arg",
+                    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context),
+                                            {llvm::Type::getInt32Ty(*ctx_->context), packed_ptr_ty},
+                                            false)),
+                {llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx_->context), (uint32_t)i + 1),
+                 argOut});
+            callArgs.push_back(argOut);
+        }
+
+        ctx_->builder->CreateCall(llvmImpl, callArgs);
+        ctx_->builder->CreateRetVoid();
+    }
 }
 
 }  // namespace druk::codegen

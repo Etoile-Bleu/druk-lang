@@ -39,6 +39,12 @@ public:
         if (parent_) return parent_->resolve(name);
         return nullptr;
     }
+
+    Symbol* resolveLocal(const std::string& name) {
+        auto it = symbols_.find(name);
+        if (it != symbols_.end()) return &it->second;
+        return nullptr;
+    }
     
     Scope* parent() const { return parent_; }
 
@@ -60,6 +66,7 @@ public:
 
     bool define(const std::string& name, const Symbol& symbol);
     Symbol* resolve(const std::string& name);
+    Symbol* resolveLocal(const std::string& name);
     
     uint32_t currentDepth() const { return depth_; }
 

@@ -197,7 +197,17 @@ add_library(druk-core STATIC
     src/codegen/core/code_generator_stubs.cpp
     src/codegen/core/target_info.cpp
     src/codegen/core/abi_handler.cpp
-    src/codegen/jit/jit_runtime.cpp
+    src/codegen/jit/runtime/rt_core.cpp
+    src/codegen/jit/runtime/rt_value.cpp
+    src/codegen/jit/runtime/rt_math.cpp
+    src/codegen/jit/runtime/rt_compare.cpp
+    src/codegen/jit/runtime/rt_globals.cpp
+    src/codegen/jit/runtime/rt_array.cpp
+    src/codegen/jit/runtime/rt_struct.cpp
+    src/codegen/jit/runtime/rt_io.cpp
+    src/codegen/jit/runtime/rt_call.cpp
+    src/codegen/jit/runtime/rt_string.cpp
+    src/codegen/jit/runtime/rt_null.cpp
     src/ir/ir_basic_block.cpp
     src/ir/ir_builder.cpp
     src/ir/ir_builder_array.cpp
@@ -222,8 +232,11 @@ add_library(druk-core STATIC
     src/codegen/llvm/backend_ir_array_len.cpp
     src/codegen/llvm/backend_ir_memory_ops.cpp
     src/codegen/llvm/backend_ir_print.cpp
+    src/codegen/llvm/backend_ir_string_ops.cpp
+    src/codegen/llvm/backend_ir_unary_ops.cpp
     src/codegen/llvm/backend_ir_control_flow.cpp
     src/codegen/llvm/backend_ir_dynamic_call.cpp
+    src/codegen/llvm/backend_ir_null.cpp
     src/vm/vm.cpp
     src/druk_c_api.cpp
 )

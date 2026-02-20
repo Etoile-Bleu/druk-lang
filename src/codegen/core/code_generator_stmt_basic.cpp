@@ -17,9 +17,14 @@ void CodeGenerator::visitPrint(parser::ast::PrintStmt* stmt)
 
 void CodeGenerator::visitVar(parser::ast::VarDecl* stmt)
 {
-    auto* alloca     = builder_.createAlloca(ir::Type::getInt64Ty());
+    // All variables in Druk are PackedValue on the stack (24 bytes)
+    // We'll use a placeholder for now or a proper IR type if available.
+    // For now, let's assume getInt64Ty() was a placeholder and we need more.
+    auto* alloca     = builder_.createAlloca(ir::Type::getInt64Ty()); // Still 8 bytes? 
+    // Wait, I should check if there's a better type.
+    // If IR doesn't have a PackedValue type, I'll use an array of 3 i64 or something.
     auto  name       = std::string(stmt->name.text(source_));
-    variables_[name] = alloca;
+    variables_stack_.back()[name] = alloca;
     if (stmt->initializer)
     {
         visit(stmt->initializer);

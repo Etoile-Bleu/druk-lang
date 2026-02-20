@@ -38,6 +38,8 @@ class IRBuilder
     Instruction* createLessEqual(Value* left, Value* right, const std::string& name = "");
     Instruction* createGreaterThan(Value* left, Value* right, const std::string& name = "");
     Instruction* createGreaterEqual(Value* left, Value* right, const std::string& name = "");
+    Instruction* createAnd(Value* left, Value* right, const std::string& name = "");
+    Instruction* createOr(Value* left, Value* right, const std::string& name = "");
 
     Instruction* createAlloca(std::shared_ptr<Type> type, const std::string& name = "");
     Instruction* createLoad(Value* ptr, const std::string& name = "");
@@ -59,6 +61,11 @@ class IRBuilder
     Instruction* createLen(Value* value, const std::string& name = "");
 
     Instruction* createPrint(Value* val);
+    Instruction* createToString(Value* val);
+    Instruction* createStringConcat(Value* l, Value* r);
+    Instruction* createUnwrap(Value* val, const std::string& name = "");
+    Instruction* createNeg(Value* val, const std::string& name = "");
+    Instruction* createNot(Value* val, const std::string& name = "");
 
    private:
     BasicBlock* insert_block_;

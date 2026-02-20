@@ -29,6 +29,8 @@ void LLVMBackend::compile_instruction(ir::Instruction* inst, llvm::StructType* p
         case ir::Opcode::LessEqual:
         case ir::Opcode::GreaterThan:
         case ir::Opcode::GreaterEqual:
+        case ir::Opcode::And:
+        case ir::Opcode::Or:
         {
             compile_binary_op(inst, packed_value_ty, packed_ptr_ty);
             break;
@@ -54,6 +56,23 @@ void LLVMBackend::compile_instruction(ir::Instruction* inst, llvm::StructType* p
         case ir::Opcode::Print:
         {
             compile_print_op(inst, packed_ptr_ty);
+            break;
+        }
+        case ir::Opcode::ToString:
+        case ir::Opcode::StringConcat:
+        {
+            compile_string_ops(inst, packed_value_ty, packed_ptr_ty);
+            break;
+        }
+        case ir::Opcode::Unwrap:
+        {
+            compile_null_ops(inst, packed_value_ty, packed_ptr_ty);
+            break;
+        }
+        case ir::Opcode::Neg:
+        case ir::Opcode::Not:
+        {
+            compile_unary_op(inst, packed_value_ty, packed_ptr_ty);
             break;
         }
         default:

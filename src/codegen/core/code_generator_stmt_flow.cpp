@@ -23,12 +23,18 @@ void CodeGenerator::visitIf(parser::ast::IfStmt* stmt)
     parentFunc->addBasicBlock(std::move(elseBlock));
     builder_.createCondBranch(cond, thenPtr, elsePtr);
     builder_.setInsertPoint(thenPtr);
+    variables_stack_.emplace_back();
     visit(stmt->thenBranch);
+    variables_stack_.pop_back();
     auto* currentThen = builder_.getInsertBlock();
 
     builder_.setInsertPoint(elsePtr);
     if (stmt->elseBranch)
+    {
+        variables_stack_.emplace_back();
         visit(stmt->elseBranch);
+        variables_stack_.pop_back();
+    }
     auto* currentElse = builder_.getInsertBlock();
 
     auto  mergeBlock = std::make_unique<ir::BasicBlock>("merge", parentFunc);

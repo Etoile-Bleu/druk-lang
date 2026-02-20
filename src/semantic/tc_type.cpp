@@ -28,6 +28,8 @@ void TypeChecker::visitBuiltinType(parser::ast::BuiltinType* type)
         currentType_ = Type::makeBool();
     else if (t == lexer::TokenType::KwVoid)
         currentType_ = Type::makeVoid();
+    else if (t == lexer::TokenType::KwFunction)
+        currentType_ = {TypeKind::Function};
     else
         currentType_ = Type::makeError();
 }
@@ -45,6 +47,11 @@ void TypeChecker::visitFunctionType(parser::ast::FunctionType* type)
         params.push_back(evaluate(type->paramTypes[i]));
     }
     currentType_ = Type::makeFunction(std::move(params), evaluate(type->returnType));
+}
+
+void TypeChecker::visitOptionType(parser::ast::OptionType* type)
+{
+    currentType_ = Type::makeOption(evaluate(type->innerType));
 }
 
 }  // namespace druk::semantic

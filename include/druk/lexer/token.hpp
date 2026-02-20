@@ -15,6 +15,9 @@ enum class TokenType : uint16_t
     Identifier,
     Number,
     String,
+    InterpolatedStringPart,
+    InterpolatedStringEnd,
+
 
     // Keywords
     KwFunction,  // ལས་འགན་
@@ -59,6 +62,8 @@ enum class TokenType : uint16_t
     Semicolon,
     Colon,
     Dot,
+    Question,
+    KwNil,
     Underscore,
 
     Count

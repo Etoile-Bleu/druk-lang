@@ -4,6 +4,7 @@
 
 #include "druk/gc/gc_heap.h"
 #include "druk/gc/types/gc_string.h"
+#include "druk/parser/ast/expr.hpp"
 #include "druk/parser/core/parser.hpp"
 
 namespace
@@ -64,6 +65,14 @@ ast::Expr* Parser::parsePrimary()
         expr->literalValue = codegen::Value(true);
         return expr;
     }
+    if (match(lexer::TokenType::KwNil))
+    {
+        auto* expr         = arena_.make<ast::LiteralExpr>();
+        expr->kind         = ast::NodeKind::Literal;
+        expr->token        = previous();
+        expr->literalValue = codegen::Value();
+        return expr;
+    }
 
     if (match(lexer::TokenType::Number))
     {
@@ -85,6 +94,63 @@ ast::Expr* Parser::parsePrimary()
         auto*            gs =
             gc::GcHeap::get().alloc<gc::GcString>(std::string(text.substr(1, text.length() - 2)));
         expr->literalValue = codegen::Value(gs);
+        return expr;
+    }
+
+    if (match(lexer::TokenType::InterpolatedStringPart))
+    {
+        auto* expr  = arena_.make<ast::InterpolatedStringExpr>();
+        expr->kind  = ast::NodeKind::InterpolatedStringExpr;
+        expr->token = previous();
+        
+        std::vector<ast::Expr*> parts;
+
+        // Add the first part (excluding opening quote, including braces? Lexer gave `"Hello {`)
+        std::string_view first_text = expr->token.text(lexer_.source());
+        auto*            gs_first = gc::GcHeap::get().alloc<gc::GcString>(
+            std::string(first_text.substr(1, first_text.length() - 2)));
+        auto* first_lit = arena_.make<ast::LiteralExpr>();
+        first_lit->kind = ast::NodeKind::Literal;
+        first_lit->literalValue = codegen::Value(gs_first);
+        parts.push_back(first_lit);
+
+        while (true)
+        {
+            // Parse inner expression
+            parts.push_back(parseExpression());
+
+            if (match(lexer::TokenType::InterpolatedStringPart))
+            {
+                std::string_view part_text = previous().text(lexer_.source());
+                auto*            gs_part = gc::GcHeap::get().alloc<gc::GcString>(
+                    std::string(part_text.substr(1, part_text.length() - 2))); // e.g., `} are {` -> ` are `
+                auto* lit = arena_.make<ast::LiteralExpr>();
+                lit->kind = ast::NodeKind::Literal;
+                lit->literalValue = codegen::Value(gs_part);
+                parts.push_back(lit);
+            }
+            else if (match(lexer::TokenType::InterpolatedStringEnd))
+            {
+                std::string_view end_text = previous().text(lexer_.source());
+                auto*            gs_end = gc::GcHeap::get().alloc<gc::GcString>(
+                    std::string(end_text.substr(1, end_text.length() - 2))); // e.g., `} years old!"` -> ` years old!`
+                auto* lit = arena_.make<ast::LiteralExpr>();
+                lit->kind = ast::NodeKind::Literal;
+                lit->literalValue = codegen::Value(gs_end);
+                parts.push_back(lit);
+                break;
+            }
+            else
+            {
+                error(peek(), "Expect closing logic for interpolated string.");
+                break;
+            }
+        }
+
+        expr->parts = arena_.allocateArray<ast::Expr*>(parts.size());
+        for (size_t i = 0; i < parts.size(); ++i) expr->parts[i] = parts[i];
+        expr->count = static_cast<uint32_t>(parts.size());
+        
         return expr;
     }
 
@@ -125,6 +191,8 @@ ast::Expr* Parser::parsePrimary()
         return group;
     }
 
+    if (match(lexer::TokenType::KwFunction))
+        return parseLambda();
     if (check(lexer::TokenType::LBracket))
         return parseArrayLiteral();
     if (check(lexer::TokenType::LBrace))

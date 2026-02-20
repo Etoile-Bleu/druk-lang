@@ -8,8 +8,8 @@ ast::Stmt* Parser::parseForStatement()
     consume(lexer::TokenType::LParen, "Expect '(' after for.");
 
     ast::Stmt* init = nullptr;
-    if (match(lexer::TokenType::KwNumber) || match(lexer::TokenType::KwString) ||
-        match(lexer::TokenType::KwBoolean))
+    if (check(lexer::TokenType::KwNumber) || check(lexer::TokenType::KwString) ||
+        check(lexer::TokenType::KwBoolean))
     {
         init = parseVarDeclaration();
     }

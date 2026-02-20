@@ -67,6 +67,9 @@ class LLVMBackend
 
     void compile_instruction(ir::Instruction* inst, llvm::StructType* packed_value_ty,
                              llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+    void prepare_functions_and_wrappers(ir::Module& module, llvm::StructType* packed_value_ty,
+                                        llvm::PointerType* packed_ptr_ty);
+
     void compile_single_function(ir::Function* function, llvm::StructType* packed_value_ty,
                                  llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
     void compile_binary_op(ir::Instruction* inst, llvm::StructType* packed_value_ty,
@@ -87,6 +90,12 @@ class LLVMBackend
     void compile_dynamic_call_op(ir::Instruction* inst, llvm::StructType* packed_value_ty,
                                  llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
     void compile_print_op(ir::Instruction* inst, llvm::PointerType* packed_ptr_ty);
+    void compile_string_ops(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                            llvm::PointerType* packed_ptr_ty);
+    void compile_null_ops(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                          llvm::PointerType* packed_ptr_ty);
+    void compile_unary_op(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                          llvm::PointerType* packed_ptr_ty);
 
     void register_runtime_symbols();
     void register_extended_symbols();

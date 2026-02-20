@@ -73,6 +73,12 @@ void LLVMBackend::compile_binary_op(ir::Instruction* inst, llvm::StructType* pac
         case ir::Opcode::GreaterEqual:
             fn = "druk_jit_greater_equal";
             break;
+        case ir::Opcode::And:
+            fn = "druk_jit_and";
+            break;
+        case ir::Opcode::Or:
+            fn = "druk_jit_or";
+            break;
         default:
             return;
     }

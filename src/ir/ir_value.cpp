@@ -52,4 +52,13 @@ std::string ConstantString::toString() const
     return "\"" + value_ + "\"";
 }
 
+ConstantNil::ConstantNil(std::shared_ptr<Type> type) : type_(std::move(type))
+{
+}
+
+std::string ConstantNil::toString() const
+{
+    return "nil";
+}
+
 }  // namespace druk::ir

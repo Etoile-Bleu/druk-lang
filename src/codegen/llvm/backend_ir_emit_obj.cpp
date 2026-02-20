@@ -21,6 +21,7 @@ bool LLVMBackend::emitObjectFile(ir::Module& module, const std::string& obj_path
     ctx_->ir_values.clear();
     ctx_->ir_blocks.clear();
     ctx_->ir_functions.clear();
+    ctx_->ir_wrappers.clear();
 
     llvm::Type*       i8_ty      = llvm::Type::getInt8Ty(*ctx_->context);
     llvm::Type*       i64_ty     = llvm::Type::getInt64Ty(*ctx_->context);
@@ -29,24 +30,7 @@ bool LLVMBackend::emitObjectFile(ir::Module& module, const std::string& obj_path
         llvm::StructType::get(*ctx_->context, {i8_ty, padding_ty, i64_ty, i64_ty}, false);
     llvm::PointerType* packed_ptr_ty = llvm::PointerType::getUnqual(*ctx_->context);
 
-    for (const auto& [name, irFunc] : module.getFunctions())
-    {
-        std::string funcName = irFunc->getName();
-        if (funcName.empty() || funcName == "main")
-        {
-            funcName = "druk_entry";
-        }
-        std::vector<llvm::Type*> paramTypes;
-        paramTypes.push_back(packed_ptr_ty);
-        for (size_t i = 0; i < irFunc->getParameterCount(); ++i)
-            paramTypes.push_back(packed_ptr_ty);
-
-        llvm::FunctionType* funcType =
-            llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context), paramTypes, false);
-        llvm::Function* llvmFunc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage,
-                                                          funcName, ctx_->module.get());
-        ctx_->ir_functions[irFunc.get()] = llvmFunc;
-    }
+    prepare_functions_and_wrappers(module, packed_value_ty, packed_ptr_ty);
 
     for (const auto& [name, irFunc] : module.getFunctions())
     {

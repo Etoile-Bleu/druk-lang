@@ -6,16 +6,28 @@ namespace druk::parser
 
 ast::Expr* Parser::parseLambda()
 {
-    std::vector<lexer::Token> params;
-    if (!check(lexer::TokenType::RParen))
+    std::vector<ast::Param> params;
+    if (match(lexer::TokenType::LParen))
     {
-        do
+        if (!check(lexer::TokenType::RParen))
         {
-            params.push_back(consume(lexer::TokenType::Identifier, "Expect parameter name."));
-        } while (match(lexer::TokenType::Comma));
+            do
+            {
+                ast::Type*   type = parseType();
+                lexer::Token name = consume(lexer::TokenType::Identifier, "Expect parameter name.");
+                params.push_back({type, name});
+            } while (match(lexer::TokenType::Comma));
+        }
+        consume(lexer::TokenType::RParen, "Expect ')' after parameters.");
     }
-    consume(lexer::TokenType::RParen, "Expect ')' after parameters.");
-    consume(lexer::TokenType::Arrow, "Expect '->' before lambda body.");
+    else
+    {
+        // JS-style without parens? (already handled by parsePrimary usually)
+    }
+
+    ast::Type* returnType = nullptr;
+    if (match(lexer::TokenType::Arrow))
+        returnType = parseType();
 
     ast::Stmt* body;
     if (check(lexer::TokenType::LBrace))
@@ -34,12 +46,13 @@ ast::Expr* Parser::parseLambda()
     auto* expr       = arena_.make<ast::LambdaExpr>();
     expr->kind       = ast::NodeKind::Lambda;
     expr->paramCount = static_cast<uint32_t>(params.size());
-    expr->params     = arena_.makeArray<lexer::Token>(expr->paramCount);
+    expr->params     = arena_.allocateArray<ast::Param>(expr->paramCount);
     for (uint32_t i = 0; i < expr->paramCount; ++i)
     {
         expr->params[i] = params[i];
     }
-    expr->body = body;
+    expr->returnType = returnType;
+    expr->body       = body;
 
     return expr;
 }
@@ -63,8 +76,8 @@ ast::Expr* Parser::parseLambdaFromIdentifier(lexer::Token name)
     auto* expr       = arena_.make<ast::LambdaExpr>();
     expr->kind       = ast::NodeKind::Lambda;
     expr->paramCount = 1;
-    expr->params     = arena_.makeArray<lexer::Token>(1);
-    expr->params[0]  = name;
+    expr->params     = arena_.allocateArray<ast::Param>(1);
+    expr->params[0]  = {nullptr, name};
     expr->body       = body;
 
     return expr;

@@ -69,10 +69,14 @@ void CodeGenerator::visitCall(parser::ast::CallExpr* expr)
         }
         else
         {
-            auto itVar = variables_.find(funcName);
-            if (itVar != variables_.end())
+            for (auto itScope = variables_stack_.rbegin(); itScope != variables_stack_.rend(); ++itScope)
             {
-                dynamicCallee = builder_.createLoad(itVar->second);
+                auto itVar = itScope->find(funcName);
+                if (itVar != itScope->end())
+                {
+                    dynamicCallee = builder_.createLoad(itVar->second);
+                    break;
+                }
             }
         }
     }

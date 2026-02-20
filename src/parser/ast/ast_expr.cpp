@@ -76,4 +76,14 @@ void LambdaExpr::accept(Visitor* v)
     v->visitLambda(this);
 }
 
+void InterpolatedStringExpr::accept(Visitor* v)
+{
+    v->visitInterpolatedStringExpr(this);
+}
+
+void UnwrapExpr::accept(Visitor* v)
+{
+    v->visitUnwrapExpr(this);
+}
+
 }  // namespace druk::parser::ast

@@ -11,8 +11,29 @@ void TypeChecker::visitLiteral(parser::ast::LiteralExpr* expr)
         currentType_ = Type::makeInt();
     else if (expr->token.type == lexer::TokenType::String)
         currentType_ = Type::makeString();
+    else if (expr->token.type == lexer::TokenType::KwNil)
+        currentType_ = Type::makeVoid();
     else
         currentType_ = Type::makeBool();
+    expr->type = currentType_;
+}
+
+void TypeChecker::visitUnwrapExpr(parser::ast::UnwrapExpr* expr)
+{
+    Type operandType = analyze(expr->operand);
+    if (operandType.kind != TypeKind::Option && operandType.kind != TypeKind::Error)
+    {
+        error(expr->token, "Cannot unwrap a non-optional type.");
+        currentType_ = Type::makeError();
+    }
+    else if (operandType.kind == TypeKind::Option)
+    {
+        currentType_ = *operandType.elementType;
+    }
+    else
+    {
+        currentType_ = Type::makeError();
+    }
     expr->type = currentType_;
 }
 
@@ -73,7 +94,18 @@ void TypeChecker::visitBinary(parser::ast::BinaryExpr* expr)
     {
         currentType_ = Type::makeError();
     }
-    expr->type = currentType_;
+}
+
+void TypeChecker::visitInterpolatedStringExpr(parser::ast::InterpolatedStringExpr* expr)
+{
+    for (uint32_t i = 0; i < expr->count; ++i)
+    {
+        analyze(expr->parts[i]); 
+        // We will allow any type to be stringified at runtime
+    }
+    
+    currentType_ = Type::makeString();
+    expr->type   = currentType_;
 }
 
 }  // namespace druk::semantic

@@ -25,6 +25,12 @@ ast::Expr *Parser::parsePostfix() {
       member->object = expr;
       member->memberName = name;
       expr = member;
+    } else if (match(lexer::TokenType::Bang)) {
+      auto *unwrap = arena_.make<ast::UnwrapExpr>();
+      unwrap->kind = ast::NodeKind::UnwrapExpr;
+      unwrap->operand = expr;
+      unwrap->token = previous();
+      expr = unwrap;
     } else {
       break;
     }

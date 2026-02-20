@@ -8,6 +8,8 @@ ast::Type* Parser::parseType()
 {
     ast::Type* type = nullptr;
 
+    bool hasFuncKw = match(lexer::TokenType::KwFunction);
+
     if (match(lexer::TokenType::LParen))
     {
         std::vector<ast::Type*> paramTypes;
@@ -33,7 +35,7 @@ ast::Type* Parser::parseType()
         funcType->returnType = returnType;
         type                 = funcType;
     }
-    else if (match(lexer::TokenType::KwNumber) || match(lexer::TokenType::KwString) ||
+    else if (hasFuncKw || match(lexer::TokenType::KwNumber) || match(lexer::TokenType::KwString) ||
              match(lexer::TokenType::KwBoolean) || match(lexer::TokenType::KwVoid))
     {
         auto* builtin  = arena_.make<ast::BuiltinType>();
@@ -54,6 +56,14 @@ ast::Type* Parser::parseType()
         arrayType->kind        = ast::NodeKind::ArrayType;
         arrayType->elementType = type;
         type                   = arrayType;
+    }
+
+    while (match(lexer::TokenType::Question))
+    {
+        auto* optType      = arena_.make<ast::OptionType>();
+        optType->kind      = ast::NodeKind::OptionType;
+        optType->innerType = type;
+        type               = optType;
     }
 
     return type;

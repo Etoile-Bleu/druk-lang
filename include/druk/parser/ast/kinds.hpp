@@ -35,7 +35,10 @@ enum class NodeKind : uint8_t
     Lambda,
     BuiltinType,
     ArrayType,
-    FunctionType
+    FunctionType,
+    InterpolatedStringExpr,
+    OptionType,
+    UnwrapExpr
 };
 
 }

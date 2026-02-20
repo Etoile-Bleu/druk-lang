@@ -21,4 +21,9 @@ void FunctionType::accept(Visitor* v)
     v->visitFunctionType(this);
 }
 
+void OptionType::accept(Visitor* v)
+{
+    v->visitOptionType(this);
+}
+
 }  // namespace druk::parser::ast

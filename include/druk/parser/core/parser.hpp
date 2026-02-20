@@ -61,6 +61,7 @@ class Parser
     lexer::Token consume(lexer::TokenType kind, std::string_view message);
     lexer::Token peek() const;
     lexer::Token peekNext() const;
+    lexer::Token peekNextNext() const;
     lexer::Token previous() const;
     bool         isAtEnd() const;
     void         synchronize();
@@ -73,6 +74,7 @@ class Parser
 
     lexer::Token current_;
     lexer::Token next_;
+    lexer::Token nextNext_;
     lexer::Token previous_;
     bool         panicMode_ = false;
 };

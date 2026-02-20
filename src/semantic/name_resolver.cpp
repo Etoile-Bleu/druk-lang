@@ -22,6 +22,26 @@ void NameResolver::resolve(parser::ast::Node* node)
     }
 }
 
+void NameResolver::defineSymbols(const std::vector<parser::ast::Stmt*>& statements)
+{
+    for (auto* stmt : statements)
+    {
+        if (stmt->kind == parser::ast::NodeKind::Function)
+        {
+            auto* func = static_cast<parser::ast::FuncDecl*>(stmt);
+            table_.define(std::string(func->name.text(source_)), {func->name, Type::makeInt()});
+        }
+    }
+}
+
+void NameResolver::resolveBodies(const std::vector<parser::ast::Stmt*>& statements)
+{
+    for (auto* stmt : statements)
+    {
+        resolve(stmt);
+    }
+}
+
 void NameResolver::visit(parser::ast::Stmt* stmt)
 {
     if (!stmt)
@@ -32,6 +52,8 @@ void NameResolver::visit(parser::ast::Stmt* stmt)
         {
             auto* block = static_cast<parser::ast::BlockStmt*>(stmt);
             table_.enterScope();
+            // Nested two-pass for blocks
+            defineSymbols({block->statements, block->statements + block->count});
             for (uint32_t i = 0; i < block->count; ++i)
             {
                 resolve(block->statements[i]);
@@ -42,18 +64,19 @@ void NameResolver::visit(parser::ast::Stmt* stmt)
         case parser::ast::NodeKind::Function:
         {
             auto* func = static_cast<parser::ast::FuncDecl*>(stmt);
-            // Define in current (presumably global) scope
-            if (!table_.define(std::string(func->name.text(source_)),
-                               {func->name, Type::makeInt()}))
-            {
-                // Warning or error? Function already defined.
-            }
+            // Function name already defined by caller's defineSymbols() pass
 
             table_.enterScope();
             for (uint32_t i = 0; i < func->paramCount; ++i)
             {
                 table_.define(std::string(func->params[i].name.text(source_)),
                               {func->params[i].name, Type::makeInt()});
+            }
+            // Functions can be nested? If so, we'd need another pass inside.
+            // For now, assume top-level or single level nesting.
+            if (func->body->kind == parser::ast::NodeKind::Block) {
+                 auto* block = static_cast<parser::ast::BlockStmt*>(func->body);
+                 defineSymbols({block->statements, block->statements + block->count});
             }
             resolve(func->body);
             table_.exitScope();

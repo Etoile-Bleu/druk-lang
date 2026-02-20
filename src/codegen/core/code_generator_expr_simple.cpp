@@ -17,6 +17,10 @@ void CodeGenerator::visitLiteral(parser::ast::LiteralExpr* expr)
         auto charPtrTy = std::make_shared<ir::PointerType>(ir::Type::getInt8Ty());
         lastValue_ = new ir::ConstantString(std::string(expr->literalValue.asString()), charPtrTy);
     }
+    else if (expr->literalValue.isNil())
+    {
+        lastValue_ = new ir::ConstantNil(ir::Type::getVoidTy());
+    }
     else
         lastValue_ = nullptr;
 }
@@ -24,9 +28,19 @@ void CodeGenerator::visitLiteral(parser::ast::LiteralExpr* expr)
 void CodeGenerator::visitVariable(parser::ast::VariableExpr* expr)
 {
     auto name = std::string(expr->name.text(source_));
-    auto it   = variables_.find(name);
-    if (it != variables_.end())
-        lastValue_ = builder_.createLoad(it->second);
+    for (auto itScope = variables_stack_.rbegin(); itScope != variables_stack_.rend(); ++itScope)
+    {
+        auto it = itScope->find(name);
+        if (it != itScope->end())
+        {
+            lastValue_ = builder_.createLoad(it->second);
+            return;
+        }
+    }
+
+    auto itFunc = functions_.find(name);
+    if (itFunc != functions_.end())
+        lastValue_ = itFunc->second;
     else
         lastValue_ = nullptr;
 }
@@ -40,12 +54,15 @@ void CodeGenerator::visitAssignment(parser::ast::AssignmentExpr* expr)
     if (auto* varExpr = dynamic_cast<parser::ast::VariableExpr*>(expr->target))
     {
         auto name = std::string(varExpr->name.text(source_));
-        auto it   = variables_.find(name);
-        if (it != variables_.end())
+        for (auto itScope = variables_stack_.rbegin(); itScope != variables_stack_.rend(); ++itScope)
         {
-            builder_.createStore(val, it->second);
-            lastValue_ = val;
-            return;
+            auto it = itScope->find(name);
+            if (it != itScope->end())
+            {
+                builder_.createStore(val, it->second);
+                lastValue_ = val;
+                return;
+            }
         }
     }
     if (auto* indexExpr = dynamic_cast<parser::ast::IndexExpr*>(expr->target))
@@ -62,6 +79,42 @@ void CodeGenerator::visitAssignment(parser::ast::AssignmentExpr* expr)
         }
     }
     lastValue_ = nullptr;
+}
+
+void CodeGenerator::visitInterpolatedStringExpr(parser::ast::InterpolatedStringExpr* expr)
+{
+    if (expr->count == 0)
+    {
+        auto charPtrTy = std::make_shared<ir::PointerType>(ir::Type::getInt8Ty());
+        lastValue_ = new ir::ConstantString("", charPtrTy);
+        return;
+    }
+
+    visit(expr->parts[0]);
+    ir::Value* result = lastValue_;
+    
+    // First part handles literals directly but if not we should ToString it
+    // Wait, first part might be an expression technically, though parser logic usually starts with literal
+    result = builder_.createToString(result);
+
+    for (uint32_t i = 1; i < expr->count; ++i)
+    {
+        visit(expr->parts[i]);
+        ir::Value* part_val = lastValue_;
+        part_val = builder_.createToString(part_val);
+        
+        result = builder_.createStringConcat(result, part_val);
+    }
+    
+    lastValue_ = result;
+}
+
+void CodeGenerator::visitUnwrapExpr(parser::ast::UnwrapExpr* expr)
+{
+    visit(expr->operand);
+    if (!lastValue_)
+        return;
+    lastValue_ = builder_.createUnwrap(lastValue_);
 }
 
 }  // namespace druk::codegen
