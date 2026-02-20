@@ -1,116 +1,222 @@
 #include "name_resolver.hpp"
 
-namespace druk::semantic {
+namespace druk::semantic
+{
 
 NameResolver::NameResolver(util::ErrorHandler& errors, SymbolTable& table, std::string_view source)
-    : errors_(errors), table_(table), source_(source) {}
+    : errors_(errors), table_(table), source_(source)
+{
+}
 
-void NameResolver::resolve(parser::ast::Node* node) {
-    if (!node) return;
-    if (auto* stmt = dynamic_cast<parser::ast::Stmt*>(node)) {
+void NameResolver::resolve(parser::ast::Node* node)
+{
+    if (!node)
+        return;
+    if (auto* stmt = dynamic_cast<parser::ast::Stmt*>(node))
+    {
         visit(stmt);
-    } else if (auto* expr = dynamic_cast<parser::ast::Expr*>(node)) {
+    }
+    else if (auto* expr = dynamic_cast<parser::ast::Expr*>(node))
+    {
         visit(expr);
     }
 }
 
-void NameResolver::visit(parser::ast::Stmt* stmt) {
-    if (!stmt) return;
-    switch (stmt->kind) {
-        case parser::ast::NodeKind::Block: {
+void NameResolver::visit(parser::ast::Stmt* stmt)
+{
+    if (!stmt)
+        return;
+    switch (stmt->kind)
+    {
+        case parser::ast::NodeKind::Block:
+        {
             auto* block = static_cast<parser::ast::BlockStmt*>(stmt);
             table_.enterScope();
-            for (uint32_t i = 0; i < block->count; ++i) {
+            for (uint32_t i = 0; i < block->count; ++i)
+            {
                 resolve(block->statements[i]);
             }
             table_.exitScope();
             break;
         }
-        case parser::ast::NodeKind::Function: {
+        case parser::ast::NodeKind::Function:
+        {
             auto* func = static_cast<parser::ast::FuncDecl*>(stmt);
             // Define in current (presumably global) scope
-            if (!table_.define(std::string(func->name.text(source_)), {func->name, Type::makeInt()})) {
+            if (!table_.define(std::string(func->name.text(source_)),
+                               {func->name, Type::makeInt()}))
+            {
                 // Warning or error? Function already defined.
             }
-            
+
             table_.enterScope();
-            for (uint32_t i = 0; i < func->paramCount; ++i) {
-                table_.define(std::string(func->params[i].text(source_)), {func->params[i], Type::makeInt()});
+            for (uint32_t i = 0; i < func->paramCount; ++i)
+            {
+                table_.define(std::string(func->params[i].name.text(source_)),
+                              {func->params[i].name, Type::makeInt()});
             }
             resolve(func->body);
             table_.exitScope();
             break;
         }
-        case parser::ast::NodeKind::Variable: {
+        case parser::ast::NodeKind::Variable:
+        {
             auto* var = static_cast<parser::ast::VarDecl*>(stmt);
             table_.define(std::string(var->name.text(source_)), {var->name, Type::makeError()});
             resolve(var->initializer);
             break;
         }
-        case parser::ast::NodeKind::If: {
+        case parser::ast::NodeKind::If:
+        {
             auto* ifStmt = static_cast<parser::ast::IfStmt*>(stmt);
             resolve(ifStmt->condition);
             resolve(ifStmt->thenBranch);
             resolve(ifStmt->elseBranch);
             break;
         }
-        case parser::ast::NodeKind::Loop: {
+        case parser::ast::NodeKind::Loop:
+        {
             auto* loop = static_cast<parser::ast::LoopStmt*>(stmt);
             resolve(loop->condition);
             resolve(loop->body);
             break;
         }
-        case parser::ast::NodeKind::Return: {
+        case parser::ast::NodeKind::While:
+        {
+            auto* ws = static_cast<parser::ast::WhileStmt*>(stmt);
+            resolve(ws->condition);
+            resolve(ws->body);
+            break;
+        }
+        case parser::ast::NodeKind::For:
+        {
+            auto* fs = static_cast<parser::ast::ForStmt*>(stmt);
+            table_.enterScope();
+            if (fs->init)
+                resolve(fs->init);
+            if (fs->condition)
+                resolve(fs->condition);
+            if (fs->step)
+                resolve(fs->step);
+            resolve(fs->body);
+            table_.exitScope();
+            break;
+        }
+        case parser::ast::NodeKind::Return:
+        {
             auto* ret = static_cast<parser::ast::ReturnStmt*>(stmt);
             resolve(ret->value);
             break;
         }
-        case parser::ast::NodeKind::Print: {
+        case parser::ast::NodeKind::Print:
+        {
             auto* print = static_cast<parser::ast::PrintStmt*>(stmt);
             resolve(print->expression);
             break;
         }
-        case parser::ast::NodeKind::ExpressionStmt: {
+        case parser::ast::NodeKind::ExpressionStmt:
+        {
             auto* exprStmt = static_cast<parser::ast::ExpressionStmt*>(stmt);
             resolve(exprStmt->expression);
             break;
         }
-        default: break;
+        default:
+            break;
     }
 }
 
-void NameResolver::visit(parser::ast::Expr* expr) {
-    if (!expr) return;
-    switch (expr->kind) {
-        case parser::ast::NodeKind::Binary: {
+void NameResolver::visit(parser::ast::Expr* expr)
+{
+    if (!expr)
+        return;
+    switch (expr->kind)
+    {
+        case parser::ast::NodeKind::Binary:
+        {
             auto* bin = static_cast<parser::ast::BinaryExpr*>(expr);
             resolve(bin->left);
             resolve(bin->right);
             break;
         }
-        case parser::ast::NodeKind::Unary: {
+        case parser::ast::NodeKind::Unary:
+        {
             auto* un = static_cast<parser::ast::UnaryExpr*>(expr);
             resolve(un->right);
             break;
         }
-        case parser::ast::NodeKind::Call: {
+        case parser::ast::NodeKind::Call:
+        {
             auto* call = static_cast<parser::ast::CallExpr*>(expr);
             resolve(call->callee);
-            for (uint32_t i = 0; i < call->argCount; ++i) {
+            for (uint32_t i = 0; i < call->argCount; ++i)
+            {
                 resolve(static_cast<parser::ast::Expr*>(call->args[i]));
             }
             break;
         }
-        case parser::ast::NodeKind::Grouping: {
+        case parser::ast::NodeKind::Grouping:
+        {
             auto* group = static_cast<parser::ast::GroupingExpr*>(expr);
             resolve(group->expression);
             break;
         }
         case parser::ast::NodeKind::VariableExpr:
+        {
+            auto* var = static_cast<parser::ast::VariableExpr*>(expr);
+            if (!table_.resolve(std::string(var->name.text(source_))))
+            {
+                util::Diagnostic diag;
+                diag.severity = util::DiagnosticsSeverity::Error;
+                diag.location = {var->name.line, 0, var->name.offset, var->name.length};
+                diag.message = "Undeclared variable '" + std::string(var->name.text(source_)) + "'";
+                errors_.report(diag);
+            }
+            break;
+        }
+        case parser::ast::NodeKind::Assignment:
+        {
+            auto* assign = static_cast<parser::ast::AssignmentExpr*>(expr);
+            resolve(assign->target);
+            resolve(assign->value);
+            break;
+        }
+        case parser::ast::NodeKind::Logical:
+        {
+            auto* log = static_cast<parser::ast::LogicalExpr*>(expr);
+            resolve(log->left);
+            resolve(log->right);
+            break;
+        }
+        case parser::ast::NodeKind::ArrayLiteral:
+        {
+            auto* arr = static_cast<parser::ast::ArrayLiteralExpr*>(expr);
+            for (uint32_t i = 0; i < arr->count; ++i) resolve(arr->elements[i]);
+            break;
+        }
+        case parser::ast::NodeKind::Index:
+        {
+            auto* idx = static_cast<parser::ast::IndexExpr*>(expr);
+            resolve(idx->array);
+            resolve(idx->index);
+            break;
+        }
+        case parser::ast::NodeKind::StructLiteral:
+        {
+            auto* st = static_cast<parser::ast::StructLiteralExpr*>(expr);
+            for (uint32_t i = 0; i < st->fieldCount; ++i) resolve(st->fieldValues[i]);
+            break;
+        }
+        case parser::ast::NodeKind::MemberAccess:
+        {
+            auto* mem = static_cast<parser::ast::MemberAccessExpr*>(expr);
+            resolve(mem->object);
+            break;
+        }
         case parser::ast::NodeKind::Literal:
             break;
-        default: break;
+        default:
+            break;
     }
 }
 
-} // namespace druk::semantic
+}  // namespace druk::semantic

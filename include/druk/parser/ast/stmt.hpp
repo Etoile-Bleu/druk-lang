@@ -10,6 +10,8 @@ namespace druk::parser::ast
  * @brief Base class for statement nodes.
  */
 class Visitor;
+struct Type;
+struct Param;
 
 /**
  * @brief Base class for statement nodes.
@@ -41,6 +43,22 @@ struct LoopStmt : Stmt
     void  accept(Visitor* v) override;
 };
 
+struct WhileStmt : Stmt
+{
+    Expr* condition;
+    Stmt* body;
+    void  accept(Visitor* v) override;
+};
+
+struct ForStmt : Stmt
+{
+    Stmt* init;       // Nullable: VarDecl or ExpressionStmt
+    Expr* condition;  // Nullable
+    Expr* step;       // Nullable
+    Stmt* body;
+    void  accept(Visitor* v) override;
+};
+
 struct ReturnStmt : Stmt
 {
     Expr* value;  // Nullable
@@ -59,21 +77,28 @@ struct PrintStmt : Stmt
     void  accept(Visitor* v) override;
 };
 
+struct Param
+{
+    Type*        type;
+    lexer::Token name;
+};
+
 struct VarDecl : Stmt
 {
     lexer::Token name;
     Expr*        initializer;  // Nullable
-    lexer::Token typeToken;
+    Type*        type;
     void         accept(Visitor* v) override;
 };
 
 struct FuncDecl : Stmt
 {
-    lexer::Token  name;
-    lexer::Token* params;
-    uint32_t      paramCount;
-    Stmt*         body;  // Should be BlockStmt
-    void          accept(Visitor* v) override;
+    lexer::Token name;
+    Param*       params;
+    uint32_t     paramCount;
+    Type*        returnType;
+    Stmt*        body;  // Should be BlockStmt
+    void         accept(Visitor* v) override;
 };
 
 }  // namespace druk::parser::ast

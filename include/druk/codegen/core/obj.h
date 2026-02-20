@@ -1,31 +1,24 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "druk/codegen/core/chunk.h"
-#include "druk/codegen/core/value.h"
+#include "druk/gc/gc_object.h"
 
 
 namespace druk::codegen
 {
 
-struct ObjFunction
+struct ObjFunction : public gc::GcObject
 {
     Chunk       chunk;
     std::string name;
     int         arity = 0;
-};
 
-struct ObjArray
-{
-    std::vector<Value> elements;
-};
+    ObjFunction() : gc::GcObject(gc::GcType::Function) {}
+    ~ObjFunction() override = default;
 
-struct ObjStruct
-{
-    std::unordered_map<std::string, Value> fields;
+    void trace() override;
 };
 
 }  // namespace druk::codegen

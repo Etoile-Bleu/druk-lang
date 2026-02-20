@@ -165,6 +165,16 @@ Instruction* IRBuilder::createCall(Function* func, const std::vector<Value*>& ar
     return ptr;
 }
 
+Instruction* IRBuilder::createDynamicCall(Value* callee, const std::vector<Value*>& args,
+                                          const std::string& name)
+{
+    auto inst = std::make_unique<DynamicCallInst>(callee, args);
+    inst->setName(name);
+    auto ptr = inst.get();
+    insert(std::move(inst));
+    return ptr;
+}
+
 Instruction* IRBuilder::createPrint(Value* val)
 {
     auto inst = std::make_unique<PrintInst>(val);

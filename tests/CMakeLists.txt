@@ -1,50 +1,81 @@
 include(GoogleTest)
 
-add_executable(druk_lexer_tests
-    unit/lexer/lexer_test.cpp
-)
+# ─── Shared include path for test helpers ─────────────────────────────────────
+set(TEST_HELPERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+# ─── 1. Lexer tests ───────────────────────────────────────────────────────────
+add_executable(druk_lexer_tests
+    unit/lexer/test_lexer_tokens.cpp
+    unit/lexer/test_lexer_keywords.cpp
+    unit/lexer/test_lexer_numbers.cpp
+    unit/lexer/test_lexer_strings.cpp
+    unit/lexer/test_lexer_errors.cpp
+)
+target_include_directories(druk_lexer_tests PRIVATE ${TEST_HELPERS_DIR})
 target_link_libraries(druk_lexer_tests PRIVATE
     druk_lexer
     druk_util
     GTest::gtest_main
 )
-
 gtest_discover_tests(druk_lexer_tests)
 
-# Parser tests
+# ─── 2. Parser tests ──────────────────────────────────────────────────────────
 add_executable(druk_parser_tests
-    unit/parser/parser_test.cpp
+    unit/parser/test_parser_expressions.cpp
+    unit/parser/test_match_lambda.cpp
+    unit/parser/test_parser_statements.cpp
+    unit/parser/test_parser_control_flow.cpp
+    unit/parser/test_parser_functions.cpp
+    unit/parser/test_parser_collections.cpp
+    unit/parser/test_parser_errors.cpp
 )
+target_include_directories(druk_parser_tests PRIVATE ${TEST_HELPERS_DIR})
 target_link_libraries(druk_parser_tests PRIVATE
+    druk_parser
+    druk_lexer
+    druk_util
+    GTest::gtest_main
+)
+gtest_discover_tests(druk_parser_tests)
+
+# ─── 3. Semantic tests ────────────────────────────────────────────────────────
+add_executable(druk_semantic_tests
+    unit/semantic/test_type_checker.cpp
+    unit/semantic/test_scope_resolution.cpp
+    unit/semantic/test_semantic_errors.cpp
+)
+target_include_directories(druk_semantic_tests PRIVATE ${TEST_HELPERS_DIR})
+target_link_libraries(druk_semantic_tests PRIVATE
     druk_parser
     druk_lexer
     druk_semantic
     druk_util
     GTest::gtest_main
 )
-gtest_discover_tests(druk_parser_tests)
+gtest_discover_tests(druk_semantic_tests)
 
-# Keep other tests as they are for now, but they might fail to link if they need druk-core
-# which now depends on the refactored lexer/util.
-# I'll comment them out for now to ensure we can at least build the lexer tests.
-# add_executable(druk_tests
-#     main_test.cpp
-#     allocator_test.cpp
-#     token_test.cpp
-#     interner_test.cpp
-#     lexer_test.cpp
-#     parser/parser_test.cpp
-#     semantic/table_test.cpp
-#     semantic/analyze_test.cpp
-#     codegen/chunk_test.cpp
-#     codegen/generator_test.cpp
-#     vm/vm_test.cpp
-# )
-# 
-# target_link_libraries(druk_tests PRIVATE
-#     druk-core
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(druk_tests)
+# ─── 4. Runtime / Value tests ─────────────────────────────────────────────────
+add_executable(druk_runtime_tests
+    unit/runtime/test_value_system.cpp
+)
+target_include_directories(druk_runtime_tests PRIVATE ${TEST_HELPERS_DIR})
+target_link_libraries(druk_runtime_tests PRIVATE
+    druk_runtime
+    druk_util
+    GTest::gtest_main
+)
+gtest_discover_tests(druk_runtime_tests)
+
+# ─── 5. Integration tests ─────────────────────────────────────────────────────
+add_executable(druk_integration_tests
+    integration/test_pipeline.cpp
+)
+target_include_directories(druk_integration_tests PRIVATE ${TEST_HELPERS_DIR})
+target_link_libraries(druk_integration_tests PRIVATE
+    druk_parser
+    druk_lexer
+    druk_semantic
+    druk_util
+    GTest::gtest_main
+)
+gtest_discover_tests(druk_integration_tests)

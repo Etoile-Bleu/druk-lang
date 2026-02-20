@@ -102,7 +102,12 @@ target_include_directories(druk_util PUBLIC
 add_library(druk_semantic STATIC
     src/semantic/analyzer.cpp
     src/semantic/name_resolver.cpp
-    src/semantic/type_checker.cpp
+    src/semantic/tc_core.cpp
+    src/semantic/tc_stmt_decl.cpp
+    src/semantic/tc_stmt_flow.cpp
+    src/semantic/tc_type.cpp
+    src/semantic/tc_expr_simple.cpp
+    src/semantic/tc_expr_complex.cpp
     src/semantic/symbol_table.cpp
     src/semantic/types.cpp
 )
@@ -132,13 +137,37 @@ if(NOT EMSCRIPTEN)
     )
 endif()
 
+# Runtime Library (GC, Value System, Chunk)
+add_library(druk_runtime STATIC
+    src/codegen/core/chunk.cpp
+    src/codegen/core/value.cpp
+    src/codegen/core/obj.cpp
+    src/gc/gc_heap_alloc.cpp
+    src/gc/gc_heap_collect.cpp
+    src/gc/gc_roots.cpp
+    src/gc/gc_array.cpp
+    src/gc/gc_string.cpp
+    src/gc/gc_struct.cpp
+)
+target_link_libraries(druk_runtime PUBLIC druk_util)
+target_include_directories(druk_runtime PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 # Parser Library
 add_library(druk_parser STATIC
     src/parser/core/parser.cpp
     src/parser/core/recovery.cpp
-    src/parser/ast/ast.cpp
+    src/parser/core/parser_type.cpp
+    src/parser/ast/ast_stmt.cpp
+    src/parser/ast/ast_expr.cpp
+    src/parser/ast/type.cpp
     src/parser/stmt/basic.cpp
+    src/parser/stmt/match_stmt.cpp
+    src/parser/expr/lambda_expr.cpp
     src/parser/stmt/control.cpp
+    src/parser/stmt/while.cpp
+    src/parser/stmt/for.cpp
     src/parser/stmt/decl.cpp
     src/parser/expr/binary.cpp
     src/parser/expr/math.cpp
@@ -147,40 +176,58 @@ add_library(druk_parser STATIC
     src/parser/expr/primary.cpp
     src/parser/expr/collections.cpp
 )
-target_link_libraries(druk_parser PUBLIC druk_lexer druk_semantic)
+target_link_libraries(druk_parser PUBLIC druk_lexer druk_semantic druk_runtime)
 target_include_directories(druk_parser PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # Core Library (Aggregator for now, will be split further)
-# Core Library (Aggregator for now, will be split further)
 add_library(druk-core STATIC
-    src/codegen/core/chunk.cpp
     src/codegen/core/code_generator_core.cpp
-    src/codegen/core/code_generator_expr.cpp
-    src/codegen/core/code_generator_stmt.cpp
+    src/codegen/core/code_generator_expr_binary.cpp
+    src/codegen/core/code_generator_expr_simple.cpp
+    src/codegen/core/code_generator_stmt_flow.cpp
+    src/codegen/core/code_generator_stmt_loop.cpp
+    src/codegen/core/code_generator_stmt_basic.cpp
     src/codegen/core/code_generator_func.cpp
+    src/codegen/core/code_generator_call.cpp
+    src/codegen/core/code_generator_array.cpp
+    src/codegen/core/code_generator_match.cpp
+    src/codegen/core/code_generator_lambda.cpp
     src/codegen/core/code_generator_stubs.cpp
     src/codegen/core/target_info.cpp
     src/codegen/core/abi_handler.cpp
     src/codegen/jit/jit_runtime.cpp
     src/ir/ir_basic_block.cpp
     src/ir/ir_builder.cpp
+    src/ir/ir_builder_array.cpp
     src/ir/ir_function.cpp
-    src/ir/ir_instruction.cpp
+    src/ir/ir_instruction_ops.cpp
+    src/ir/ir_instruction_memory.cpp
+    src/ir/ir_instruction_control.cpp
+    src/ir/ir_instruction_arrays.cpp
     src/ir/ir_module.cpp
     src/ir/ir_type.cpp
     src/ir/ir_value.cpp
     src/codegen/llvm/runtime.cpp
     src/codegen/llvm/backend_ir_constants.cpp
-    src/codegen/llvm/backend_ir_compile.cpp
+    src/codegen/llvm/backend_ir_compile_main.cpp
+    src/codegen/llvm/backend_ir_compile_func.cpp
+    src/codegen/llvm/backend_ir_emit_obj.cpp
     src/codegen/llvm/backend_ir_instructions.cpp
     src/codegen/llvm/backend_ir_binary_ops.cpp
+    src/codegen/llvm/backend_ir_array_ops.cpp
+    src/codegen/llvm/backend_ir_array_build.cpp
+    src/codegen/llvm/backend_ir_array_index.cpp
+    src/codegen/llvm/backend_ir_array_len.cpp
+    src/codegen/llvm/backend_ir_memory_ops.cpp
+    src/codegen/llvm/backend_ir_print.cpp
     src/codegen/llvm/backend_ir_control_flow.cpp
+    src/codegen/llvm/backend_ir_dynamic_call.cpp
     src/vm/vm.cpp
     src/druk_c_api.cpp
 )
-target_link_libraries(druk-core PUBLIC druk_parser druk_semantic)
+target_link_libraries(druk-core PUBLIC druk_parser druk_semantic druk_runtime)
 
 if(DRUK_HAVE_LLVM)
     target_sources(druk-core PRIVATE
@@ -188,7 +235,9 @@ if(DRUK_HAVE_LLVM)
         src/codegen/llvm/llvm_backend_symbols.cpp
         src/codegen/llvm/llvm_backend_symbols2.cpp
         src/codegen/llvm/llvm_backend_utils.cpp
-        src/codegen/llvm/llvm_codegen.cpp
+        src/codegen/llvm/llvm_codegen_core.cpp
+        src/codegen/llvm/llvm_codegen_find_linker.cpp
+        src/codegen/llvm/llvm_codegen_link_exec.cpp
         src/codegen/llvm/llvm_jit.cpp
         src/codegen/llvm/llvm_ir_builder.cpp
     )

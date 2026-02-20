@@ -3,13 +3,16 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "druk/codegen/core/obj.h"
 #include "druk/codegen/core/value.h"
+#include "druk/gc/gc_heap.h"
+#include "druk/gc/types/gc_array.h"
+#include "druk/gc/types/gc_string.h"
+#include "druk/gc/types/gc_struct.h"
 #include "druk/lexer/unicode.hpp"
 
 namespace druk::codegen
@@ -17,72 +20,26 @@ namespace druk::codegen
 
 namespace
 {
+
 std::vector<std::string>               g_jit_args;
 std::unordered_map<std::string, Value> g_globals;
-std::vector<std::string>               g_string_storage;
+bool                                   g_roots_registered = false;
 
-const char* value_type_name(uint8_t type)
+void ensureRootsRegistered()
 {
-    switch (static_cast<ValueType>(type))
-    {
-        case ValueType::Nil:
-            return "nil";
-        case ValueType::Int:
-            return "int";
-        case ValueType::Bool:
-            return "bool";
-        case ValueType::String:
-            return "string";
-        case ValueType::Function:
-            return "function";
-        case ValueType::Array:
-            return "array";
-        case ValueType::Struct:
-            return "struct";
-    }
-    return "unknown";
-}
-
-std::string_view store_string(std::string str)
-{
-    g_string_storage.push_back(std::move(str));
-    return g_string_storage.back();
-}
-
-void pack_value(const Value& v, PackedValue* out)
-{
-    out->type = static_cast<uint8_t>(v.type());
-    // Clear padding
-    std::memset(out->padding, 0, sizeof(out->padding));
-    out->extra = 0;
-    switch (v.type())
-    {
-        case ValueType::Nil:
-            out->data.i = 0;
-            break;
-        case ValueType::Int:
-            out->data.i = v.asInt();
-            break;
-        case ValueType::Bool:
-            out->data.i = v.asBool() ? 1 : 0;
-            break;
-        case ValueType::String:
+    if (g_roots_registered)
+        return;
+    g_roots_registered = true;
+    gc::GcHeap::get().roots().addSource(
+        [](gc::GcObject*)
         {
-            auto sv     = v.asString();
-            out->data.s = sv.data();
-            out->extra  = static_cast<int64_t>(sv.size());
-            break;
-        }
-        case ValueType::Function:
-            out->data.ptr = new std::shared_ptr<ObjFunction>(v.asFunction());
-            break;
-        case ValueType::Array:
-            out->data.ptr = new std::shared_ptr<ObjArray>(v.asArray());
-            break;
-        case ValueType::Struct:
-            out->data.ptr = new std::shared_ptr<ObjStruct>(v.asStruct());
-            break;
-    }
+            for (auto& [k, v] : g_globals) v.markGcRefs();
+        });
+}
+
+gc::GcString* storeString(std::string s)
+{
+    return gc::GcHeap::get().alloc<gc::GcString>(std::move(s));
 }
 
 Value unpack_value(const PackedValue* p)
@@ -97,15 +54,53 @@ Value unpack_value(const PackedValue* p)
         case ValueType::Bool:
             return Value(p->data.i != 0);
         case ValueType::String:
-            return Value(std::string_view(p->data.s, static_cast<size_t>(p->extra)));
+        {
+            auto* gs = static_cast<gc::GcString*>(p->data.ptr);
+            return Value(gs);
+        }
         case ValueType::Function:
-            return Value(*static_cast<std::shared_ptr<ObjFunction>*>(p->data.ptr));
+            return Value(static_cast<ObjFunction*>(p->data.ptr));
         case ValueType::Array:
-            return Value(*static_cast<std::shared_ptr<ObjArray>*>(p->data.ptr));
+            return Value(static_cast<gc::GcArray*>(p->data.ptr));
         case ValueType::Struct:
-            return Value(*static_cast<std::shared_ptr<ObjStruct>*>(p->data.ptr));
+            return Value(static_cast<gc::GcStruct*>(p->data.ptr));
+        case ValueType::RawFunction:
+            return Value(p->data.ptr, true);
     }
     return Value();
+}
+
+void pack_value(const Value& v, PackedValue* p)
+{
+    p->type  = static_cast<uint8_t>(v.type());
+    p->extra = 0;
+    switch (v.type())
+    {
+        case ValueType::Nil:
+            p->data.i = 0;
+            break;
+        case ValueType::Int:
+            p->data.i = v.asInt();
+            break;
+        case ValueType::Bool:
+            p->data.i = v.asBool() ? 1 : 0;
+            break;
+        case ValueType::String:
+            p->data.ptr = v.asGcString();
+            break;
+        case ValueType::Array:
+            p->data.ptr = v.asGcArray();
+            break;
+        case ValueType::Struct:
+            p->data.ptr = v.asGcStruct();
+            break;
+        case ValueType::Function:
+            p->data.ptr = v.asFunction();
+            break;
+        case ValueType::RawFunction:
+            p->data.ptr = v.asRawFunction();
+            break;
+    }
 }
 
 struct CallFrame
@@ -115,22 +110,22 @@ struct CallFrame
 std::vector<CallFrame>                        g_call_frames;
 std::unordered_map<ObjFunction*, DrukJitFunc> g_compiled_functions;
 DrukJitCompileFn                              g_compile_handler = nullptr;
+
 }  // namespace
 
 extern "C"
 {
     void druk_jit_set_args(const char** argv, int32_t argc)
     {
+        ensureRootsRegistered();
         g_jit_args.clear();
         if (!argv || argc <= 0)
             return;
         for (int32_t i = 0; i < argc; ++i) g_jit_args.emplace_back(argv[i] ? argv[i] : "");
-        auto argv_array = std::make_shared<ObjArray>();
-        for (const auto& arg : g_jit_args) argv_array->elements.push_back(Value(store_string(arg)));
-        g_globals["argv"]        = Value(argv_array);
-        g_globals["argc"]        = Value(static_cast<int64_t>(g_jit_args.size()));
-        g_globals["ནང་འཇུག་ཐོ"]    = Value(argv_array);
-        g_globals["ནང་འཇུག་གྲངས་"] = Value(static_cast<int64_t>(g_jit_args.size()));
+        auto* argv_array = gc::GcHeap::get().alloc<gc::GcArray>();
+        for (const auto& arg : g_jit_args) argv_array->elements.push_back(Value(storeString(arg)));
+        g_globals["argv"] = Value(argv_array);
+        g_globals["argc"] = Value(static_cast<int64_t>(g_jit_args.size()));
     }
 
     void druk_jit_value_nil(PackedValue* out)
@@ -139,18 +134,21 @@ extern "C"
         out->data.i = 0;
         out->extra  = 0;
     }
+
     void druk_jit_value_bool(bool b, PackedValue* out)
     {
         out->type   = static_cast<uint8_t>(ValueType::Bool);
         out->data.i = b;
         out->extra  = 0;
     }
+
     void druk_jit_value_int(int64_t i, PackedValue* out)
     {
         out->type   = static_cast<uint8_t>(ValueType::Int);
         out->data.i = i;
         out->extra  = 0;
     }
+
     void druk_jit_value_function(ObjFunction* fn, PackedValue* out)
     {
         if (!fn)
@@ -159,8 +157,27 @@ extern "C"
             return;
         }
         out->type     = static_cast<uint8_t>(ValueType::Function);
-        out->data.ptr = new std::shared_ptr<ObjFunction>(fn, [](ObjFunction*) {});
+        out->data.ptr = fn;
         out->extra    = 0;
+    }
+
+    void druk_jit_value_raw_function(void* ptr, PackedValue* out)
+    {
+        if (!ptr)
+        {
+            druk_jit_value_nil(out);
+            return;
+        }
+        out->type     = static_cast<uint8_t>(ValueType::RawFunction);
+        out->data.ptr = ptr;
+        out->extra    = 0;
+    }
+
+    void druk_jit_string_literal(const char* data, size_t len, PackedValue* out)
+    {
+        ensureRootsRegistered();
+        auto* gs = gc::GcHeap::get().alloc<gc::GcString>(std::string(data, len));
+        pack_value(Value(gs), out);
     }
 
     void druk_jit_add(const PackedValue* a, const PackedValue* b, PackedValue* out)
@@ -235,9 +252,13 @@ extern "C"
     {
         Value va = unpack_value(a), vb = unpack_value(b);
         if (va.isInt() && vb.isInt())
+        {
             pack_value(Value(va.asInt() <= vb.asInt()), out);
+        }
         else
+        {
             pack_value(Value(false), out);
+        }
     }
 
     void druk_jit_greater_equal(const PackedValue* a, const PackedValue* b, PackedValue* out)
@@ -257,6 +278,7 @@ extern "C"
 
     void druk_jit_get_global(const char* name, size_t name_len, PackedValue* out)
     {
+        ensureRootsRegistered();
         auto it = g_globals.find(std::string(name, name_len));
         if (it != g_globals.end())
             pack_value(it->second, out);
@@ -269,6 +291,7 @@ extern "C"
 
     void druk_jit_define_global(const char* name, size_t name_len, const PackedValue* val)
     {
+        ensureRootsRegistered();
         g_globals[std::string(name, name_len)] = unpack_value(val);
     }
 
@@ -281,7 +304,7 @@ extern "C"
 
     void druk_jit_build_array(const PackedValue* elements, int32_t count, PackedValue* out)
     {
-        auto arr = std::make_shared<ObjArray>();
+        auto* arr = gc::GcHeap::get().alloc<gc::GcArray>();
         for (int32_t i = 0; i < count; ++i) arr->elements.push_back(unpack_value(&elements[i]));
         pack_value(Value(arr), out);
     }
@@ -291,7 +314,7 @@ extern "C"
         Value arr = unpack_value(arr_val), idx = unpack_value(idx_val);
         if (arr.isArray() && idx.isInt())
         {
-            auto    p = arr.asArray();
+            auto*   p = arr.asGcArray();
             int64_t i = idx.asInt();
             if (i >= 0 && static_cast<size_t>(i) < p->elements.size())
             {
@@ -308,7 +331,7 @@ extern "C"
         Value arr = unpack_value(arr_val), idx = unpack_value(idx_val);
         if (arr.isArray() && idx.isInt())
         {
-            auto    p = arr.asArray();
+            auto*   p = arr.asGcArray();
             int64_t i = idx.asInt();
             if (i >= 0 && static_cast<size_t>(i) < p->elements.size())
                 p->elements[static_cast<size_t>(i)] = unpack_value(val);
@@ -318,7 +341,7 @@ extern "C"
     void druk_jit_build_struct(const PackedValue* keys, const PackedValue* values, int32_t count,
                                PackedValue* out)
     {
-        auto s = std::make_shared<ObjStruct>();
+        auto* s = gc::GcHeap::get().alloc<gc::GcStruct>();
         for (int32_t i = 0; i < count; ++i)
         {
             Value k = unpack_value(&keys[i]);
@@ -334,8 +357,8 @@ extern "C"
         Value s = unpack_value(struct_val);
         if (s.isStruct())
         {
-            auto p  = s.asStruct();
-            auto it = p->fields.find(std::string(field, field_len));
+            auto* p  = s.asGcStruct();
+            auto  it = p->fields.find(std::string(field, field_len));
             if (it != p->fields.end())
             {
                 pack_value(it->second, out);
@@ -350,16 +373,16 @@ extern "C"
     {
         Value s = unpack_value(struct_val);
         if (s.isStruct())
-            s.asStruct()->fields[std::string(field, field_len)] = unpack_value(val);
+            s.asGcStruct()->fields[std::string(field, field_len)] = unpack_value(val);
     }
 
     void druk_jit_len(const PackedValue* val, PackedValue* out)
     {
         Value v = unpack_value(val);
         if (v.isArray())
-            pack_value(Value(static_cast<int64_t>(v.asArray()->elements.size())), out);
+            pack_value(Value(static_cast<int64_t>(v.asGcArray()->elements.size())), out);
         else if (v.isStruct())
-            pack_value(Value(static_cast<int64_t>(v.asStruct()->fields.size())), out);
+            pack_value(Value(static_cast<int64_t>(v.asGcStruct()->fields.size())), out);
         else
             druk_jit_value_nil(out);
     }
@@ -368,16 +391,16 @@ extern "C"
     {
         Value v = unpack_value(arr_val);
         if (v.isArray())
-            v.asArray()->elements.push_back(unpack_value(element));
+            v.asGcArray()->elements.push_back(unpack_value(element));
     }
 
     void druk_jit_pop_array(PackedValue* arr_val, PackedValue* out)
     {
         Value v = unpack_value(arr_val);
-        if (v.isArray() && !v.asArray()->elements.empty())
+        if (v.isArray() && !v.asGcArray()->elements.empty())
         {
-            pack_value(v.asArray()->elements.back(), out);
-            v.asArray()->elements.pop_back();
+            pack_value(v.asGcArray()->elements.back(), out);
+            v.asGcArray()->elements.pop_back();
             return;
         }
         druk_jit_value_nil(out);
@@ -410,7 +433,7 @@ extern "C"
             default:
                 break;
         }
-        pack_value(Value(store_string(t)), out);
+        pack_value(Value(storeString(t)), out);
     }
 
     void druk_jit_keys(const PackedValue* val, PackedValue* out)
@@ -418,9 +441,9 @@ extern "C"
         Value v = unpack_value(val);
         if (v.isStruct())
         {
-            auto a = std::make_shared<ObjArray>();
-            for (const auto& p : v.asStruct()->fields)
-                a->elements.push_back(Value(store_string(p.first)));
+            auto* a = gc::GcHeap::get().alloc<gc::GcArray>();
+            for (const auto& p : v.asGcStruct()->fields)
+                a->elements.push_back(Value(storeString(p.first)));
             pack_value(Value(a), out);
         }
         else
@@ -432,8 +455,8 @@ extern "C"
         Value v = unpack_value(val);
         if (v.isStruct())
         {
-            auto a = std::make_shared<ObjArray>();
-            for (const auto& p : v.asStruct()->fields) a->elements.push_back(p.second);
+            auto* a = gc::GcHeap::get().alloc<gc::GcArray>();
+            for (const auto& p : v.asGcStruct()->fields) a->elements.push_back(p.second);
             pack_value(Value(a), out);
         }
         else
@@ -445,7 +468,7 @@ extern "C"
         Value c = unpack_value(container), it = unpack_value(item);
         if (c.isArray())
         {
-            for (const auto& e : c.asArray()->elements)
+            for (const auto& e : c.asGcArray()->elements)
                 if (e == it)
                 {
                     pack_value(Value(true), out);
@@ -455,7 +478,7 @@ extern "C"
         }
         else if (c.isStruct() && it.isString())
         {
-            auto s = c.asStruct();
+            auto* s = c.asGcStruct();
             pack_value(Value(s->fields.find(std::string(it.asString())) != s->fields.end()), out);
         }
         else
@@ -466,43 +489,28 @@ extern "C"
     {
         std::string l;
         if (std::getline(std::cin, l))
-            pack_value(Value(store_string(l)), out);
+            pack_value(Value(storeString(std::move(l))), out);
         else
-            pack_value(Value(store_string("")), out);
+            pack_value(Value(storeString("")), out);
     }
 
     void druk_jit_print(const PackedValue* val)
     {
         Value v = unpack_value(val);
         if (v.isInt())
-        {
-            std::string res = ::druk::lexer::unicode::toTibetanNumeral(v.asInt());
-            std::cout << res << "\n";
-        }
+            std::cout << ::druk::lexer::unicode::toTibetanNumeral(v.asInt()) << "\n";
         else if (v.isBool())
-        {
             std::cout << (v.asBool() ? "བདེན" : "རྫུན") << "\n";
-        }
         else if (v.isString())
-        {
             std::cout << v.asString() << "\n";
-        }
         else if (v.isNil())
-        {
             std::cout << "nil\n";
-        }
         else if (v.isArray())
-        {
-            std::cout << "[array:" << v.asArray()->elements.size() << "]\n";
-        }
+            std::cout << "[array:" << v.asGcArray()->elements.size() << "]\n";
         else if (v.isStruct())
-        {
-            std::cout << "{struct:" << v.asStruct()->fields.size() << "}\n";
-        }
+            std::cout << "{struct:" << v.asGcStruct()->fields.size() << "}\n";
         else
-        {
             std::cout << "<function>\n";
-        }
     }
 
     void druk_jit_register_function(ObjFunction* function, DrukJitFunc fn)
@@ -510,6 +518,7 @@ extern "C"
         if (function && fn)
             g_compiled_functions[function] = fn;
     }
+
     void druk_jit_set_compile_handler(DrukJitCompileFn fn)
     {
         g_compile_handler = fn;
@@ -519,22 +528,32 @@ extern "C"
                        PackedValue* out)
     {
         Value c = unpack_value(callee);
+        if (c.isRawFunction())
+        {
+            CallFrame frame;
+            frame.args.push_back(*callee);
+            for (int32_t i = 0; i < count; ++i) frame.args.push_back(args[i]);
+            g_call_frames.push_back(std::move(frame));
+            reinterpret_cast<DrukJitFunc>(c.asRawFunction())(out);
+            g_call_frames.pop_back();
+            return;
+        }
         if (!c.isFunction())
         {
             druk_jit_value_nil(out);
             return;
         }
-        auto f = c.asFunction();
+        auto* f = c.asFunction();
         if (count != f->arity)
         {
             druk_jit_value_nil(out);
             return;
         }
-        auto it = g_compiled_functions.find(f.get());
+        auto it = g_compiled_functions.find(f);
         if (it == g_compiled_functions.end() && g_compile_handler)
-            if (auto compiled = g_compile_handler(f.get()))
-                g_compiled_functions[f.get()] = compiled;
-        it = g_compiled_functions.find(f.get());
+            if (auto compiled = g_compile_handler(f))
+                g_compiled_functions[f] = compiled;
+        it = g_compiled_functions.find(f);
         if (it == g_compiled_functions.end())
         {
             druk_jit_value_nil(out);
@@ -564,16 +583,16 @@ extern "C"
         return (value && value->type == static_cast<uint8_t>(ValueType::Int)) ? value->data.i : 0;
     }
 
-    bool druk_jit_value_as_bool(const PackedValue* value)
+    int32_t druk_jit_value_as_bool_int(const PackedValue* value)
     {
         if (!value)
-            return false;
-        if (value->type == static_cast<uint8_t>(ValueType::Bool))
-            return value->data.i != 0;
-        if (value->type == static_cast<uint8_t>(ValueType::Nil))
-            return false;
-        return true;
-    }
+            return 0;
 
-}  // extern "C"
+        if (value->type == static_cast<uint8_t>(ValueType::Bool))
+            return value->data.i != 0 ? 1 : 0;
+        if (value->type == static_cast<uint8_t>(ValueType::Nil))
+            return 0;
+        return 1;
+    }
+}
 }  // namespace druk::codegen

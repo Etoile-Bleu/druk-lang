@@ -33,6 +33,7 @@ class LLVMBackend
 
     using CompiledFunc = void (*)(PackedValue* out);
     CompiledFunc compileFunction(ir::Function* function);
+    bool         emitObjectFile(ir::Module& module, const std::string& obj_path);
 
    private:
     bool debug_ = false;
@@ -51,7 +52,8 @@ class LLVMBackend
         // New IR State
         std::unordered_map<ir::Value*, llvm::Value*>           ir_values;
         std::unordered_map<ir::BasicBlock*, llvm::BasicBlock*> ir_blocks;
-        std::unordered_map<ir::Function*, llvm::Function*>     ir_functions;
+        std::unordered_map<ir::Function*, llvm::Function*>     ir_functions;  // implementations
+        std::unordered_map<ir::Function*, llvm::Function*>     ir_wrappers;   // void(out*) thunks
 
         std::unordered_map<std::string, llvm::GlobalVariable*> globals;
 
@@ -64,13 +66,27 @@ class LLVMBackend
     llvm::Value* create_entry_alloca(llvm::Type* type, const std::string& name = "");
 
     void compile_instruction(ir::Instruction* inst, llvm::StructType* packed_value_ty,
-                            llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+                             llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
     void compile_single_function(ir::Function* function, llvm::StructType* packed_value_ty,
-                                llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+                                 llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
     void compile_binary_op(ir::Instruction* inst, llvm::StructType* packed_value_ty,
-                          llvm::PointerType* packed_ptr_ty);
+                           llvm::PointerType* packed_ptr_ty);
+    void compile_memory_ops(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                            llvm::Type* i64_ty);
+    void compile_array_ops(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                           llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+    void compile_array_build(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                             llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+    void compile_array_index(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                             llvm::PointerType* packed_ptr_ty);
+    void compile_array_len(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                           llvm::PointerType* packed_ptr_ty);
     void compile_control_flow(ir::Instruction* inst, llvm::StructType* packed_value_ty,
                               llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+    void compile_call_op(ir::Instruction* inst, llvm::PointerType* packed_ptr_ty);
+    void compile_dynamic_call_op(ir::Instruction* inst, llvm::StructType* packed_value_ty,
+                                 llvm::PointerType* packed_ptr_ty, llvm::Type* i64_ty);
+    void compile_print_op(ir::Instruction* inst, llvm::PointerType* packed_ptr_ty);
 
     void register_runtime_symbols();
     void register_extended_symbols();

@@ -34,15 +34,19 @@ bool Lexer::isAlpha(char c)
 TokenType Lexer::checkKeyword(std::string_view text)
 {
     static const std::unordered_map<std::string_view, TokenType> keywords = {
-        {"ལས་ཀ་", TokenType::KwFunction}, {"གྲངས་ཀ་", TokenType::KwNumber},
-        {"ཡིག་རྟགས་", TokenType::KwString}, {"བདེན་", TokenType::KwBoolean},
-        {"རྫུན་", TokenType::KwFalse},      {"གལ་ཏེ་", TokenType::KwIf},
-        {"ཡང་ན་", TokenType::KwElse},     {"རིམ་པ་", TokenType::KwLoop},
-        {"ལོག་", TokenType::KwReturn},     {"འབྲི་", TokenType::KwPrint}};
+        {"ལས་འགན་", TokenType::KwFunction}, {"གྲངས་", TokenType::KwNumber},
+        {"ཡིག་འབྲུ་", TokenType::KwString},    {"བདེན་རྫུན་", TokenType::KwBoolean},
+        {"བདེན་པ་", TokenType::KwTrue},      {"རྫུན་མ་", TokenType::KwFalse},
+        {"གལ་སྲིད་", TokenType::KwIf},        {"མེད་ན་", TokenType::KwElse},
+        {"ཡང་བསྐྱར་", TokenType::KwWhile},    {"རེ་རེར་", TokenType::KwFor},
+        {"རིམ་པ་", TokenType::KwLoop},       {"སླར་ལོག་", TokenType::KwReturn},
+        {"བཀོད་", TokenType::KwPrint},       {"འགྲིག་པ་", TokenType::KwMatch},
+        {"སྟོང་པ", TokenType::KwVoid}};
 
-    auto it = keywords.find(text);
-    if (it != keywords.end())
+    if (auto it = keywords.find(text); it != keywords.end())
+    {
         return it->second;
+    }
 
     return TokenType::Identifier;
 }

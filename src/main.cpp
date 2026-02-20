@@ -12,6 +12,7 @@
 #include "druk/util/error_handler.hpp"
 #include "druk/vm/vm.hpp"
 
+#include "druk/codegen/llvm/llvm_codegen.h"
 #ifdef DRUK_HAVE_LLVM
 #include "druk/codegen/llvm/llvm_jit.h"
 extern "C" void druk_jit_set_args(const char** argv, int32_t argc);
@@ -215,8 +216,18 @@ int main(int argc, char* argv[])
 
     if (compileMode)
     {
-        // ...
+#ifdef DRUK_HAVE_LLVM
+        druk::codegen::LLVMCodeGen aot_codegen(debug);
+        if (!aot_codegen.emitMachineCode(irModule, outputFile))
+        {
+            std::cerr << "AOT compilation failed.\n";
+            return 1;
+        }
         return 0;
+#else
+        std::cerr << "AOT compilation requires LLVM support.\n";
+        return 1;
+#endif
     }
 
     // JIT Execution

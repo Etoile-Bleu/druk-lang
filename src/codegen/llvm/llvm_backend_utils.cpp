@@ -1,9 +1,11 @@
 #ifdef DRUK_HAVE_LLVM
 
-#include "druk/codegen/llvm/llvm_backend.h"
-
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/Passes/PassBuilder.h>
+
+#include <iostream>
+
+#include "druk/codegen/llvm/llvm_backend.h"
 
 namespace druk::codegen
 {

@@ -30,7 +30,7 @@ class IRBuilder
     Instruction* createSub(Value* left, Value* right, const std::string& name = "");
     Instruction* createMul(Value* left, Value* right, const std::string& name = "");
     Instruction* createDiv(Value* left, Value* right, const std::string& name = "");
-    
+
     // Comparison instructions
     Instruction* createEqual(Value* left, Value* right, const std::string& name = "");
     Instruction* createNotEqual(Value* left, Value* right, const std::string& name = "");
@@ -49,6 +49,14 @@ class IRBuilder
 
     Instruction* createCall(Function* func, const std::vector<Value*>& args,
                             const std::string& name = "");
+    Instruction* createDynamicCall(Value* callee, const std::vector<Value*>& args,
+                                   const std::string& name = "");
+
+    Instruction* createBuildArray(const std::vector<Value*>& elements,
+                                  const std::string&         name = "");
+    Instruction* createIndex(Value* array_val, Value* index_val, const std::string& name = "");
+    Instruction* createIndexSet(Value* array_val, Value* index_val, Value* value);
+    Instruction* createLen(Value* value, const std::string& name = "");
 
     Instruction* createPrint(Value* val);
 

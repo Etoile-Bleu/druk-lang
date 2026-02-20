@@ -2,7 +2,6 @@
 #include "druk/codegen/core/value.h"
 #include "druk/codegen/jit/jit_runtime.h"
 
-
 // Define runtime functions that JIT-compiled code will call.
 // These must be exported with C linkage to be easily resolvable.
 
@@ -55,5 +54,28 @@ extern "C"
                                     void (*fn)(PackedValue* out));
     void druk_jit_set_compile_handler(DrukJitCompileFn fn);
     int64_t druk_jit_value_as_int(const PackedValue* value);
-    bool    druk_jit_value_as_bool(const PackedValue* value);
+    int32_t druk_jit_value_as_bool_int(const PackedValue* value);
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
+    void druk_runtime_init()
+    {
+#ifdef _WIN32
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE)
+        {
+            DWORD dwMode = 0;
+            if (GetConsoleMode(hOut, &dwMode))
+            {
+                dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                SetConsoleMode(hOut, dwMode);
+            }
+        }
+#endif
+    }
 }

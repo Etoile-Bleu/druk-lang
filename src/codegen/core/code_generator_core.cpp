@@ -4,10 +4,10 @@
  */
 
 #include "druk/codegen/core/code_generator.h"
-
 #include "druk/ir/ir_basic_block.h"
 #include "druk/ir/ir_function.h"
 #include "druk/ir/ir_type.h"
+#include "druk/parser/ast/type.hpp"
 
 namespace druk::codegen
 {
@@ -32,13 +32,13 @@ bool CodeGenerator::generate(const std::vector<parser::ast::Stmt*>& statements)
     {
         visit(stmt);
     }
-    
+
     auto* currentBlock = builder_.getInsertBlock();
     if (currentBlock && !currentBlock->hasTerminator())
     {
         builder_.createRet();
     }
-    
+
     module_.addFunction(std::move(mainFunc));
 
     return !errors_.hasErrors();
@@ -54,6 +54,12 @@ void CodeGenerator::visit(parser::ast::Expr* expr)
 {
     if (expr)
         expr->accept(this);
+}
+
+void CodeGenerator::visit(parser::ast::Type* type)
+{
+    if (type)
+        type->accept(this);
 }
 
 void CodeGenerator::visitBlock(parser::ast::BlockStmt* stmt)

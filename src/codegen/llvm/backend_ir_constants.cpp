@@ -1,11 +1,10 @@
 #ifdef DRUK_HAVE_LLVM
 
-#include "druk/codegen/llvm/llvm_backend.h"
-
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GlobalVariable.h>
 
 #include "druk/codegen/core/value.h"
+#include "druk/codegen/llvm/llvm_backend.h"
 #include "druk/ir/ir_value.h"
 
 namespace druk::codegen
@@ -57,31 +56,40 @@ llvm::Value* LLVMBackend::get_llvm_value(ir::Value* value)
     }
     else if (auto* cStr = dynamic_cast<ir::ConstantString*>(value))
     {
-        llvm::Value* alloc = create_entry_alloca(packed_value_ty, "const_str");
-
+        llvm::Value*    alloc = create_entry_alloca(packed_value_ty, "const_str");
         llvm::Constant* strConst =
             llvm::ConstantDataArray::getString(*ctx_->context, cStr->getValue());
         llvm::GlobalVariable* strGlobal =
             new llvm::GlobalVariable(*ctx_->module, strConst->getType(), true,
                                      llvm::GlobalValue::PrivateLinkage, strConst, ".str");
-
-        llvm::Value* typePtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 0);
-        ctx_->builder->CreateStore(
-            llvm::ConstantInt::get(i8_ty, static_cast<uint8_t>(ValueType::String)), typePtr);
-
-        llvm::Value* dataPtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 2);
         llvm::Value* strPtr =
             ctx_->builder->CreateBitCast(strGlobal, llvm::PointerType::getUnqual(*ctx_->context));
-        llvm::Value* strInt = ctx_->builder->CreatePtrToInt(strPtr, i64_ty);
-        ctx_->builder->CreateStore(strInt, dataPtr);
 
-        llvm::Value* extraPtr = ctx_->builder->CreateStructGEP(packed_value_ty, alloc, 3);
-        ctx_->builder->CreateStore(llvm::ConstantInt::get(i64_ty, cStr->getValue().size()),
-                                   extraPtr);
-
+        ctx_->builder->CreateCall(
+            ctx_->module->getOrInsertFunction(
+                "druk_jit_string_literal",
+                llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context),
+                                        {llvm::PointerType::getUnqual(*ctx_->context), i64_ty,
+                                         llvm::PointerType::getUnqual(*ctx_->context)},
+                                        false)),
+            {strPtr, llvm::ConstantInt::get(i64_ty, cStr->getValue().size()), alloc});
         return alloc;
     }
 
+    else if (auto* irFunc = dynamic_cast<ir::Function*>(value))
+    {
+        llvm::Value*    alloc    = create_entry_alloca(packed_value_ty, "const_func");
+        llvm::Function* llvmFunc = ctx_->ir_wrappers[irFunc];
+        ctx_->builder->CreateCall(
+            ctx_->module->getOrInsertFunction(
+                "druk_jit_value_raw_function",
+                llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context),
+                                        {llvm::PointerType::getUnqual(*ctx_->context),
+                                         llvm::PointerType::getUnqual(*ctx_->context)},
+                                        false)),
+            {llvmFunc, alloc});
+        return alloc;
+    }
     return nullptr;
 }
 

@@ -9,8 +9,8 @@
 - Namespaces: `snake_case`
 
 ## File Organization
-- Max 300 lines per .cpp file
-- Max 200 lines per .h file
+- Max 100 lines per .cpp file
+- Max 50 lines per .h file
 - Max 50 lines per function
 - One class per file
 

@@ -8,8 +8,11 @@
 #include <string>
 
 #include "druk/codegen/core/opcode.h"
+#include "druk/gc/gc_heap.h"
+#include "druk/gc/types/gc_array.h"
+#include "druk/gc/types/gc_string.h"
+#include "druk/gc/types/gc_struct.h"
 #include "druk/lexer/unicode.hpp"
-
 
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -34,11 +37,12 @@ void VM::set_args(const std::vector<std::string>& args)
 {
     argvStorage_ = args;
 
-    auto argvArray = std::make_shared<ObjArray>();
+    auto* argvArray = gc::GcHeap::get().alloc<gc::GcArray>();
     argvArray->elements.reserve(argvStorage_.size());
     for (const auto& s : argvStorage_)
     {
-        argvArray->elements.push_back(Value(std::string_view(s)));
+        auto* gs = gc::GcHeap::get().alloc<gc::GcString>(s);
+        argvArray->elements.push_back(Value(gs));
     }
 
     auto set_global = [&](std::string_view name, Value value)
@@ -61,14 +65,14 @@ void VM::set_args(const std::vector<std::string>& args)
     set_global("ནང་འཇུག་གྲངས་", Value(static_cast<int64_t>(argvStorage_.size())));
 }
 
-InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function)
+InterpretResult VM::interpret(ObjFunction* function)
 {
     stackTop_ = stackBase_;
     frames_.clear();
     lastResult_ = Value();
 
     CallFrame frame;
-    frame.function = function.get();
+    frame.function = function;
     frame.ip       = function->chunk.code().data();
     frame.slots    = stackBase_;
 
@@ -125,10 +129,9 @@ void VM::runtimeError(const char* format, ...)
     stackTop_ = stackBase_;
 }
 
-std::string_view VM::storeString(std::string value)
+gc::GcString* VM::storeString(std::string value)
 {
-    inputStorage_.push_back(std::move(value));
-    return std::string_view(inputStorage_.back());
+    return gc::GcHeap::get().alloc<gc::GcString>(std::move(value));
 }
 
 InterpretResult VM::run()
@@ -399,9 +402,9 @@ InterpretResult VM::run()
                 else if (val.isNil())
                     std::cout << "nil\n";
                 else if (val.isArray())
-                    std::cout << "[array:" << val.asArray()->elements.size() << "]\n";
+                    std::cout << "[array:" << val.asGcArray()->elements.size() << "]\n";
                 else if (val.isStruct())
-                    std::cout << "{struct:" << val.asStruct()->fields.size() << "}\n";
+                    std::cout << "{struct:" << val.asGcStruct()->fields.size() << "}\n";
                 break;
             }
 
@@ -444,7 +447,7 @@ InterpretResult VM::run()
                     return InterpretResult::RuntimeError;
                 }
 
-                std::shared_ptr<ObjFunction> function = callee.asFunction();
+                ObjFunction* function = callee.asFunction();
                 if (static_cast<int>(argCount) != function->arity)
                 {
                     frame_->ip = ip;
@@ -462,7 +465,7 @@ InterpretResult VM::run()
 
                 frame_->ip = ip;
                 CallFrame nextFrame;
-                nextFrame.function = function.get();
+                nextFrame.function = function;
                 nextFrame.ip       = function->chunk.code().data();
                 nextFrame.slots    = stackTop_ - argCount - 1;
 

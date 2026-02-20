@@ -1,12 +1,13 @@
 // C API wrapper for embedding Druk in standalone executables
 #include <cstring>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "druk/codegen/core/chunk.h"
 #include "druk/codegen/core/obj.h"
 #include "druk/codegen/core/value.h"
+#include "druk/gc/gc_heap.h"
+#include "druk/gc/types/gc_string.h"
 #include "druk/vm/vm.hpp"
 
 using namespace druk;
@@ -54,31 +55,28 @@ extern "C"
 
     void* druk_function_create()
     {
-        auto func = std::make_shared<ObjFunction>();
-        return new std::shared_ptr<ObjFunction>(func);
+        return new ObjFunction();
     }
 
     void druk_function_set_chunk(void* func, void* chunk)
     {
-        auto func_ptr      = static_cast<std::shared_ptr<ObjFunction>*>(func);
-        auto chunk_ptr     = static_cast<Chunk*>(chunk);
-        (*func_ptr)->chunk = *chunk_ptr;  // Copy
+        auto* func_ptr  = static_cast<ObjFunction*>(func);
+        auto* chunk_ptr = static_cast<Chunk*>(chunk);
+        func_ptr->chunk = *chunk_ptr;
     }
 
     void druk_function_set_name(void* func, const char* name)
     {
-        auto func_ptr     = static_cast<std::shared_ptr<ObjFunction>*>(func);
-        (*func_ptr)->name = name;
+        static_cast<ObjFunction*>(func)->name = name;
     }
 
     int druk_vm_interpret(void* vm, void* func)
     {
         try
         {
-            auto vm_ptr   = static_cast<VM*>(vm);
-            auto func_ptr = static_cast<std::shared_ptr<ObjFunction>*>(func);
-            int  result   = static_cast<int>(vm_ptr->interpret(*func_ptr));
-            return result;
+            auto* vm_ptr   = static_cast<VM*>(vm);
+            auto* func_ptr = static_cast<ObjFunction*>(func);
+            return static_cast<int>(vm_ptr->interpret(func_ptr));
         }
         catch (const std::exception& e)
         {
@@ -94,7 +92,7 @@ extern "C"
 
     void druk_function_destroy(void* func)
     {
-        delete static_cast<std::shared_ptr<ObjFunction>*>(func);
+        delete static_cast<ObjFunction*>(func);
     }
 
     size_t druk_chunk_serialize_size(void* chunk)
@@ -228,9 +226,10 @@ extern "C"
                 uint32_t str_size;
                 memcpy(&str_size, ptr, 4);
                 ptr += 4;
-                chunk_ptr->stringStorage().emplace_back((const char*)ptr, str_size);
+                auto* gs =
+                    gc::GcHeap::get().alloc<gc::GcString>(std::string((const char*)ptr, str_size));
                 ptr += str_size;
-                chunk_ptr->addConstant(Value(std::string_view(chunk_ptr->stringStorage().back())));
+                chunk_ptr->addConstant(Value(gs));
             }
             else if (type == 2)
             {

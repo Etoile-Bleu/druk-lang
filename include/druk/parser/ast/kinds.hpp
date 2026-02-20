@@ -2,37 +2,40 @@
 
 #include <cstdint>
 
-namespace druk::parser::ast {
+namespace druk::parser::ast
+{
 
-/**
- * @brief Categorizes the different types of AST nodes.
- */
-enum class NodeKind : uint8_t {
-  // Declarations
-  Function,
-  Variable,
+enum class NodeKind : uint8_t
+{
+    Function,
+    Variable,
 
-  // Statements
-  Block,
-  If,
-  Loop,
-  Return,
-  Print,
-  ExpressionStmt,
+    Block,
+    If,
+    Loop,
+    While,
+    For,
+    Match,
+    Return,
+    Print,
+    ExpressionStmt,
 
-  // Expressions
-  Binary,
-  Unary,
-  Literal,
-  Grouping,
-  VariableExpr,
-  Call,
-  Assignment,
-  Logical,
-  ArrayLiteral,
-  Index,
-  StructLiteral,
-  MemberAccess
+    Binary,
+    Unary,
+    Literal,
+    Grouping,
+    VariableExpr,
+    Call,
+    Assignment,
+    Logical,
+    ArrayLiteral,
+    Index,
+    StructLiteral,
+    MemberAccess,
+    Lambda,
+    BuiltinType,
+    ArrayType,
+    FunctionType
 };
 
-} // namespace druk::parser::ast
+}

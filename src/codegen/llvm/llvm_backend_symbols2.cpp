@@ -1,10 +1,9 @@
 #ifdef DRUK_HAVE_LLVM
 
-#include "druk/codegen/llvm/llvm_backend.h"
-
 #include <llvm/ExecutionEngine/Orc/Core.h>
 
 #include "druk/codegen/jit/jit_runtime.h"
+#include "druk/codegen/llvm/llvm_backend.h"
 
 extern "C"
 {
@@ -33,7 +32,6 @@ extern "C"
                                     void (*fn)(PackedValue* out));
     void druk_jit_set_compile_handler(DrukJitCompileFn fn);
     int64_t druk_jit_value_as_int(const PackedValue* value);
-    bool    druk_jit_value_as_bool(const PackedValue* value);
 }
 
 namespace druk::codegen
@@ -86,8 +84,9 @@ void LLVMBackend::register_extended_symbols()
         llvm::JITSymbolFlags::Exported};
     symbols[mangle("druk_jit_value_as_int")] = {
         llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_as_int), llvm::JITSymbolFlags::Exported};
-    symbols[mangle("druk_jit_value_as_bool")] = {
-        llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_as_bool), llvm::JITSymbolFlags::Exported};
+    symbols[mangle("druk_jit_value_as_bool_int")] = {
+        llvm::orc::ExecutorAddr::fromPtr(&druk_jit_value_as_bool_int),
+        llvm::JITSymbolFlags::Exported};
 
     llvm::cantFail(jd.define(llvm::orc::absoluteSymbols(std::move(symbols))));
 }

@@ -19,13 +19,14 @@ class Chunk
     // Patch a byte at an offset (used for jumps)
     void patch(size_t offset, uint8_t byte);
 
-    const std::vector<uint8_t>& code() const
-    {
-        return code_;
-    }
     const std::vector<Value>& constants() const
     {
         return constants_;
+    }
+
+    const std::vector<uint8_t>& code() const
+    {
+        return code_;
     }
     const std::vector<int>& lines() const
     {

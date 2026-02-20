@@ -3,16 +3,18 @@
 #include "druk/lexer/token.hpp"
 #include "druk/parser/ast/kinds.hpp"
 
-namespace druk::parser::ast {
+namespace druk::parser::ast
+{
 
-/**
- * @brief Base class for all AST nodes.
- */
-struct Node {
-  virtual ~Node() = default;
+class Visitor;
 
-  NodeKind kind;
-  lexer::Token token; // Representative token for error reporting
+struct Node
+{
+    virtual ~Node()                 = default;
+    virtual void accept(Visitor* v) = 0;
+
+    NodeKind     kind;
+    lexer::Token token;
 };
 
-} // namespace druk::parser::ast
+}  // namespace druk::parser::ast

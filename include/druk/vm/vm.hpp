@@ -9,6 +9,10 @@
 #include "druk/codegen/core/obj.h"
 #include "druk/codegen/core/value.h"
 
+namespace druk::gc
+{
+class GcString;
+}
 
 namespace druk
 {
@@ -36,7 +40,7 @@ class VM
     VM();
     ~VM();
 
-    InterpretResult       interpret(std::shared_ptr<codegen::ObjFunction> function);
+    InterpretResult       interpret(codegen::ObjFunction* function);
     void                  set_args(const std::vector<std::string>& args);
     const codegen::Value& lastResult() const
     {
@@ -50,8 +54,8 @@ class VM
     codegen::Value        pop();
     const codegen::Value& peek(int distance) const;
 
-    void             runtimeError(const char* format, ...);
-    std::string_view storeString(std::string value);
+    void          runtimeError(const char* format, ...);
+    gc::GcString* storeString(std::string value);
 
     size_t stackSize() const
     {
@@ -76,7 +80,6 @@ class VM
     } globalCache_;
 
     std::vector<std::string> argvStorage_;
-    std::vector<std::string> inputStorage_;
 
     codegen::Value lastResult_{};
 

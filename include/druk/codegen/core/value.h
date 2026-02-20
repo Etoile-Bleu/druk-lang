@@ -2,21 +2,21 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
-#include <new>
-#include <string>
 #include <string_view>
+
+namespace druk::gc
+{
+class GcArray;
+class GcString;
+class GcStruct;
+class GcHeap;
+}  // namespace druk::gc
 
 namespace druk::codegen
 {
 
-// Forward declarations
 struct ObjFunction;
-struct ObjArray;
-struct ObjStruct;
 
-/**
- * @brief Categorizes the different types of values that can exist at runtime.
- */
 enum class ValueType : uint8_t
 {
     Nil,
@@ -26,12 +26,9 @@ enum class ValueType : uint8_t
     Function,
     Array,
     Struct,
+    RawFunction,
 };
 
-/**
- * @brief Represents a value in the Druk language runtime.
- * Implements a tagged union with shared pointer management for objects.
- */
 class Value
 {
    public:
@@ -39,179 +36,33 @@ class Value
     {
         data_.i = 0;
     }
-
-    explicit Value(int64_t value) : type_(ValueType::Int)
+    explicit Value(int64_t v) : type_(ValueType::Int)
     {
-        data_.i = value;
+        data_.i = v;
     }
-    explicit Value(bool value) : type_(ValueType::Bool)
+    explicit Value(bool v) : type_(ValueType::Bool)
     {
-        data_.b = value;
+        data_.b = v;
     }
-    explicit Value(std::string_view value) : type_(ValueType::String)
+    explicit Value(gc::GcString* v) : type_(ValueType::String)
     {
-        data_.s = value;
+        data_.str = v;
     }
-
-    explicit Value(std::shared_ptr<ObjFunction> value) : type_(ValueType::Function)
+    explicit Value(gc::GcArray* v) : type_(ValueType::Array)
     {
-        new (&data_.function) std::shared_ptr<ObjFunction>(std::move(value));
+        data_.arr = v;
     }
-
-    explicit Value(std::shared_ptr<ObjArray> value) : type_(ValueType::Array)
+    explicit Value(gc::GcStruct* v) : type_(ValueType::Struct)
     {
-        new (&data_.array) std::shared_ptr<ObjArray>(std::move(value));
+        data_.struc = v;
     }
-
-    explicit Value(std::shared_ptr<ObjStruct> value) : type_(ValueType::Struct)
+    explicit Value(ObjFunction* v) : type_(ValueType::Function)
     {
-        new (&data_.structure) std::shared_ptr<ObjStruct>(std::move(value));
+        data_.func = v;
     }
-
-    // Copy Constructor
-    Value(const Value& other) : type_(other.type_)
+    explicit Value(void* v, bool isRaw) : type_(ValueType::RawFunction)
     {
-        switch (type_)
-        {
-            case ValueType::Nil:
-            case ValueType::Int:
-                data_.i = other.data_.i;
-                break;
-            case ValueType::Bool:
-                data_.b = other.data_.b;
-                break;
-            case ValueType::String:
-                data_.s = other.data_.s;
-                break;
-            case ValueType::Function:
-                new (&data_.function) std::shared_ptr<ObjFunction>(other.data_.function);
-                break;
-            case ValueType::Array:
-                new (&data_.array) std::shared_ptr<ObjArray>(other.data_.array);
-                break;
-            case ValueType::Struct:
-                new (&data_.structure) std::shared_ptr<ObjStruct>(other.data_.structure);
-                break;
-        }
-    }
-
-    // Move Constructor
-    Value(Value&& other) noexcept : type_(other.type_)
-    {
-        switch (type_)
-        {
-            case ValueType::Nil:
-            case ValueType::Int:
-                data_.i = other.data_.i;
-                break;
-            case ValueType::Bool:
-                data_.b = other.data_.b;
-                break;
-            case ValueType::String:
-                data_.s = other.data_.s;
-                break;
-            case ValueType::Function:
-                new (&data_.function) std::shared_ptr<ObjFunction>(std::move(other.data_.function));
-                break;
-            case ValueType::Array:
-                new (&data_.array) std::shared_ptr<ObjArray>(std::move(other.data_.array));
-                break;
-            case ValueType::Struct:
-                new (&data_.structure) std::shared_ptr<ObjStruct>(std::move(other.data_.structure));
-                break;
-        }
-    }
-
-    // Assignment Operator
-    Value& operator=(const Value& other)
-    {
-        if (this == &other)
-            return *this;
-
-        if (type_ == other.type_)
-        {
-            switch (type_)
-            {
-                case ValueType::Nil:
-                case ValueType::Int:
-                    data_.i = other.data_.i;
-                    return *this;
-                case ValueType::Bool:
-                    data_.b = other.data_.b;
-                    return *this;
-                case ValueType::String:
-                    data_.s = other.data_.s;
-                    return *this;
-                case ValueType::Function:
-                    data_.function = other.data_.function;
-                    return *this;
-                case ValueType::Array:
-                    data_.array = other.data_.array;
-                    return *this;
-                case ValueType::Struct:
-                    data_.structure = other.data_.structure;
-                    return *this;
-            }
-        }
-
-        this->~Value();
-        new (this) Value(other);
-        return *this;
-    }
-
-    // Move Assignment
-    Value& operator=(Value&& other) noexcept
-    {
-        if (this == &other)
-            return *this;
-
-        if (type_ == other.type_)
-        {
-            switch (type_)
-            {
-                case ValueType::Nil:
-                case ValueType::Int:
-                    data_.i = other.data_.i;
-                    return *this;
-                case ValueType::Bool:
-                    data_.b = other.data_.b;
-                    return *this;
-                case ValueType::String:
-                    data_.s = other.data_.s;
-                    return *this;
-                case ValueType::Function:
-                    data_.function = std::move(other.data_.function);
-                    return *this;
-                case ValueType::Array:
-                    data_.array = std::move(other.data_.array);
-                    return *this;
-                case ValueType::Struct:
-                    data_.structure = std::move(other.data_.structure);
-                    return *this;
-            }
-        }
-
-        this->~Value();
-        new (this) Value(std::move(other));
-        return *this;
-    }
-
-    ~Value()
-    {
-        switch (type_)
-        {
-            case ValueType::Function:
-                data_.function.~shared_ptr();
-                break;
-            case ValueType::Array:
-                data_.array.~shared_ptr();
-                break;
-            case ValueType::Struct:
-                data_.structure.~shared_ptr();
-                break;
-            default:
-                break;
-        }
+        data_.ptr = v;
     }
 
     [[nodiscard]] ValueType type() const
@@ -239,6 +90,10 @@ class Value
     {
         return type_ == ValueType::Function;
     }
+    [[nodiscard]] bool isRawFunction() const
+    {
+        return type_ == ValueType::RawFunction;
+    }
     [[nodiscard]] bool isArray() const
     {
         return type_ == ValueType::Array;
@@ -256,75 +111,58 @@ class Value
     {
         return data_.b;
     }
-    [[nodiscard]] std::string_view asString() const
+
+    [[nodiscard]] gc::GcString* asGcString() const
     {
-        return data_.s;
+        assert(type_ == ValueType::String);
+        return data_.str;
     }
 
-    [[nodiscard]] std::shared_ptr<ObjFunction> asFunction() const
-    {
-        assert(type_ == ValueType::Function);
-        return data_.function;
-    }
-    [[nodiscard]] std::shared_ptr<ObjArray> asArray() const
+    [[nodiscard]] gc::GcArray* asGcArray() const
     {
         assert(type_ == ValueType::Array);
-        return data_.array;
+        return data_.arr;
     }
-    [[nodiscard]] std::shared_ptr<ObjStruct> asStruct() const
+
+    [[nodiscard]] gc::GcStruct* asGcStruct() const
     {
         assert(type_ == ValueType::Struct);
-        return data_.structure;
+        return data_.struc;
     }
 
-    [[nodiscard]] bool operator==(const Value& other) const
+    [[nodiscard]] ObjFunction* asFunction() const
     {
-        if (type_ != other.type_)
-        {
-            return false;
-        }
-        switch (type_)
-        {
-            case ValueType::Nil:
-                return true;
-            case ValueType::Int:
-                return data_.i == other.data_.i;
-            case ValueType::Bool:
-                return data_.b == other.data_.b;
-            case ValueType::String:
-                return data_.s == other.data_.s;
-            case ValueType::Function:
-                return data_.function == other.data_.function;
-            case ValueType::Array:
-                return data_.array == other.data_.array;
-            case ValueType::Struct:
-                return data_.structure == other.data_.structure;
-            default:
-                return false;
-        }
+        assert(type_ == ValueType::Function);
+        return data_.func;
     }
 
+    [[nodiscard]] void* asRawFunction() const
+    {
+        assert(type_ == ValueType::RawFunction);
+        return data_.ptr;
+    }
+
+    [[nodiscard]] std::string_view asString() const;
+
+    [[nodiscard]] bool operator==(const Value& other) const;
     [[nodiscard]] bool operator!=(const Value& other) const
     {
         return !(*this == other);
     }
 
+    void markGcRefs() const;
+
    private:
     ValueType type_;
-    union UnionData
+    union
     {
-        int64_t                      i;
-        bool                         b;
-        std::string_view             s;
-        std::shared_ptr<ObjFunction> function;
-        std::shared_ptr<ObjArray>    array;
-        std::shared_ptr<ObjStruct>   structure;
-
-        UnionData()
-        {
-            i = 0;
-        }
-        ~UnionData() {}  // handled by Value destructor
+        int64_t       i;
+        bool          b;
+        gc::GcString* str;
+        gc::GcArray*  arr;
+        gc::GcStruct* struc;
+        ObjFunction*  func;
+        void*         ptr;
     } data_;
 };
 

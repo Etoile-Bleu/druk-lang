@@ -1,5 +1,2 @@
-// ༡. བཀྲ་ཤིས་བདེ་ལེགས་ (Hello World)
-// འབྲི་ (Print) keyword displays Tibetan text.
-
-འབྲི་ "བཀྲ་ཤིས་བདེ་ལེགས།";
-འབྲི་ "འདི་ནི་དྲུག་སྐད་ཡིན།"; // This is Druk language.
+བཀོད་ "Hello, Druk Lang!";
+བཀོད་ "བདེ་ལེགས། (Tashi Delek)";

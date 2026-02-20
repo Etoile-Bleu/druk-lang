@@ -40,6 +40,27 @@ void LLVMBackend::compile_binary_op(ir::Instruction* inst, llvm::StructType* pac
         case ir::Opcode::Equal:
             fn = "druk_jit_equal";
             break;
+        case ir::Opcode::NotEqual:
+        {
+            llvm::Value* eq_tmp = create_entry_alloca(packed_value_ty);
+            ctx_->builder->CreateCall(
+                ctx_->module->getOrInsertFunction(
+                    "druk_jit_equal",
+                    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context),
+                                            {packed_ptr_ty, packed_ptr_ty, packed_ptr_ty},
+                                            false)),
+                {lhs, rhs, eq_tmp});
+
+            ctx_->builder->CreateCall(
+                ctx_->module->getOrInsertFunction(
+                    "druk_jit_not",
+                    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_->context),
+                                            {packed_ptr_ty, packed_ptr_ty}, false)),
+                {eq_tmp, res});
+
+            ctx_->ir_values[inst] = res;
+            return;
+        }
         case ir::Opcode::LessThan:
             fn = "druk_jit_less";
             break;
@@ -52,7 +73,6 @@ void LLVMBackend::compile_binary_op(ir::Instruction* inst, llvm::StructType* pac
         case ir::Opcode::GreaterEqual:
             fn = "druk_jit_greater_equal";
             break;
-        // TODO: Implement NotEqual using combinations
         default:
             return;
     }
