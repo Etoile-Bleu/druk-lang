@@ -1,53 +1,91 @@
-# Build directories
+# ==========================================
+# C++ / LLVM Build and Artifacts
+# ==========================================
 build/
-build-wasm/
+build-*/
+cmake-build-*/
+out/
 bin/
 lib/
-out/
 dist/
-cmake-build-*/
-.cache/
 
-# IDE/Editor
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+*.app
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.a
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Makefile
+*.ninja
+cmake_install.cmake
+compile_commands.json
+.cache/
+Testing/
+
+# ==========================================
+# Druk Language - Temp files
+# ==========================================
+# Ignore test and debug .druk files in the root created for temporary testing
+/*.druk
+/*.exe
+/*.obj
+test_*.druk
+debug_*.druk
+*.log
+*.tmp
+*.bak
+ir_dump.txt
+full_test_results.txt
+
+# ==========================================
+# Python (Tests, Tools)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# ==========================================
+# Web / Node / Frontend
+# ==========================================
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+web/dist/
+
+# ==========================================
+# IDEs & Editor
+# ==========================================
 .vscode/
 .idea/
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.*
 .agent/
 *.swp
 *.swo
 *~
 
-# Windows Artifacts
-*.exe
-*.dll
-*.pdb
-*.ilk
-*.obj
-*.lib
-*.exp
-
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.ninja
-compile_commands.json
-
-# Web / Node
-node_modules/
-web/node_modules/
-web/dist/
-npm-debug.log
-yarn-error.log
-package-lock.json
-
-# OS
+# ==========================================
+# OS Generated
+# ==========================================
 .DS_Store
 Thumbs.db
 Desktop.ini
-
-# Temporary / Useless Files
-test_*.druk
-test.druk
-*.tmp
-*.log

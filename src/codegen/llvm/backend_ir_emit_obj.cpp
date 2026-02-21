@@ -105,8 +105,9 @@ bool LLVMBackend::emitObjectFile(ir::Module& module, const std::string& obj_path
     }
 
     std::string         error;
-    llvm::Triple        triple(llvm::sys::getDefaultTargetTriple());
-    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple.str(), error);
+    std::string         triple_str = llvm::sys::getDefaultTargetTriple();
+    llvm::Triple        triple{llvm::Twine{triple_str}};
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple, error);
     if (!target)
     {
         llvm::errs() << "AOT: Failed to lookup target: " << error << "\n";

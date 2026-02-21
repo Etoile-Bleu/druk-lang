@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadWasm } from '../wasmRunner.js';
+import { runAot } from '../aotRunner.js';
 import { useI18n } from '../i18n/useI18n.js';
 import { examples } from '../data/examples.js';
 
@@ -15,9 +15,9 @@ export default function Playground() {
   const navigate = useNavigate();
   const [source, setSource] = useState(examples[0].code);
   const [output, setOutput] = useState('');
-  const [status, setStatus] = useState('Loading WASM...');
-  const [runner, setRunner] = useState(null);
+  const [status, setStatus] = useState('AOT Ready');
   const [activeExample, setActiveExample] = useState(examples[0]);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_EXAMPLE_KEY);
@@ -26,34 +26,39 @@ export default function Playground() {
     setSource(example.code);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadWasm()
-      .then((api) => {
-        if (cancelled) return;
-        setRunner(api);
-        setStatus('WASM ready');
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStatus('WASM missing (build required)');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const onRun = async () => {
+    if (isRunning) return;
 
-  const onRun = () => {
-    if (!runner) {
-      setOutput('WASM not loaded. Build the wasm bundle first.');
-      return;
+    setIsRunning(true);
+    setStatus('Running...');
+    setOutput('');
+
+    try {
+      const result = await runAot(source);
+
+      if (result.error) {
+        setOutput(`Error: ${result.error}\n\n${result.stderr || ''}`);
+        setStatus('Error');
+      } else {
+        const fullOutput = [];
+        if (result.stdout) fullOutput.push(result.stdout);
+        if (result.stderr) fullOutput.push(`Error Output:\n${result.stderr}`);
+
+        setOutput(fullOutput.join('\n') || 'Program finished with no output.');
+        setStatus('AOT Ready');
+      }
+    } catch (err) {
+      setOutput(`Communication error: ${err.message}`);
+      setStatus('Offline');
+    } finally {
+      setIsRunning(false);
     }
-    setOutput(runner.run(source));
   };
 
   const onReset = () => {
     setSource(activeExample.code);
     setOutput('');
+    setStatus('AOT Ready');
   };
 
   const onOpenExamples = () => navigate('/examples');
@@ -77,17 +82,21 @@ export default function Playground() {
           onChange={(event) => setSource(event.target.value)}
         />
         <div className="panel-actions">
-          <button className="btn primary" onClick={onRun}>{t.hero.run}</button>
-          <button className="btn ghost" onClick={onReset}>{t.hero.reset}</button>
+          <button className="btn primary" onClick={onRun} disabled={isRunning}>
+            {isRunning ? 'Running...' : t.hero.run}
+          </button>
+          <button className="btn ghost" onClick={onReset} disabled={isRunning}>
+            {t.hero.reset}
+          </button>
         </div>
       </section>
 
       <section className="panel output">
         <div className="panel-header">
           <span>{t.panels.output}</span>
-          <span className="pill">WASM</span>
+          <span className="pill">AOT</span>
         </div>
-        <pre>{outputHint}</pre>
+        <pre className={status === 'Error' ? 'error-text' : ''}>{outputHint}</pre>
       </section>
     </main>
   );

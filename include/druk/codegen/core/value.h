@@ -4,15 +4,20 @@
 #include <memory>
 #include <string_view>
 
-namespace druk::gc
+namespace druk
+{
+namespace gc
 {
 class GcArray;
 class GcString;
 class GcStruct;
 class GcHeap;
-}  // namespace druk::gc
+}  // namespace gc
+}  // namespace druk
 
-namespace druk::codegen
+namespace druk
+{
+namespace codegen
 {
 
 struct ObjFunction;
@@ -44,22 +49,10 @@ class Value
     {
         data_.b = v;
     }
-    explicit Value(gc::GcString* v) : type_(ValueType::String)
-    {
-        data_.str = v;
-    }
-    explicit Value(gc::GcArray* v) : type_(ValueType::Array)
-    {
-        data_.arr = v;
-    }
-    explicit Value(gc::GcStruct* v) : type_(ValueType::Struct)
-    {
-        data_.struc = v;
-    }
-    explicit Value(ObjFunction* v) : type_(ValueType::Function)
-    {
-        data_.func = v;
-    }
+    explicit Value(gc::GcString* v);
+    explicit Value(gc::GcArray* v);
+    explicit Value(gc::GcStruct* v);
+    explicit Value(ObjFunction* v);
     explicit Value(void* v, bool isRaw) : type_(ValueType::RawFunction)
     {
         data_.ptr = v;
@@ -166,4 +159,5 @@ class Value
     } data_;
 };
 
-}  // namespace druk::codegen
+}  // namespace codegen
+}  // namespace druk

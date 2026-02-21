@@ -126,7 +126,7 @@ def main():
             sys.stderr.reconfigure(encoding='utf-8')
             
     parser = argparse.ArgumentParser(description="Druk E2E Test Runner")
-    parser.add_argument("--compiler", default="build/Release/druk.exe", help="Path to druk compiler")
+    parser.add_argument("--compiler", default="build/druk.exe", help="Path to druk compiler")
     parser.add_argument("--cases", default="tests/e2e/cases", help="Directory containing test cases")
     args = parser.parse_args()
 

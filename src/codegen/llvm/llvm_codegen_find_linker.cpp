@@ -4,7 +4,6 @@
 
 #include "druk/codegen/llvm/llvm_codegen.h"
 
-
 namespace druk::codegen
 {
 
@@ -48,6 +47,11 @@ std::string LLVMCodeGen::find_linker()
             }
         }
     }
+#else
+    if (std::system("which clang > /dev/null 2>&1") == 0)
+        return "clang";
+    if (std::system("which cc > /dev/null 2>&1") == 0)
+        return "cc";
 #endif
     return "";
 }

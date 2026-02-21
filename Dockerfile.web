@@ -1,0 +1,58 @@
+FROM ubuntu:24.04
+
+# Avoid tzdata prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    cmake \
+    llvm-18 \
+    llvm-18-dev \
+    libclang-18-dev \
+    clang-18 \
+    uuid-dev \
+    zlib1g-dev \
+    libzstd-dev \
+    git \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y nodejs \
+ && rm -rf /var/lib/apt/lists/*
+
+# Map LLVM binaries - keep clang package but we'll use gcc for the project
+# RUN ln -s /usr/bin/clang-18 /usr/bin/clang \
+#  && ln -s /usr/bin/clang++-18 /usr/bin/clang++
+
+WORKDIR /app/compiler
+# Copy all compiler source files
+COPY . .
+# Build the Druk compiler
+# Build the Druk compiler with Clang 18
+ENV CC=clang-18
+ENV CXX=clang++-18
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
+ && cmake --build build -j1 2>&1 | python3 scripts/filter_errors.py || (cat compilation_errors.log && exit 1)
+
+# Setup Node Backend
+WORKDIR /app/web/backend
+COPY web/backend/package*.json ./
+RUN npm install
+COPY web/backend .
+
+# Setup Vite Frontend
+WORKDIR /app/web/frontend
+COPY web/package*.json ./
+RUN npm install
+COPY web/ .
+RUN npm run build
+
+# Runner script
+WORKDIR /app
+RUN echo '#!/bin/bash\ncd /app/web/frontend && npm run preview -- --host 0.0.0.0 --port 5173 &\ncd /app/web/backend && node server.js' > start.sh && chmod +x start.sh
+
+EXPOSE 3000 5173
+CMD ["./start.sh"]

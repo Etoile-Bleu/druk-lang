@@ -5,6 +5,10 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <limits.h>
+#include <unistd.h>
+
 #endif
 
 #include "druk/codegen/llvm/llvm_codegen.h"
@@ -32,25 +36,54 @@ static std::filesystem::path find_vcvars(const std::string& linker)
 
 bool LLVMCodeGen::link_executable(const std::string& obj, const std::string& exe)
 {
+    std::filesystem::path bin_dir;
 #ifdef _WIN32
     char exe_path_buf[MAX_PATH];
-    GetModuleFileNameA(nullptr, exe_path_buf, MAX_PATH);
-    std::filesystem::path compiler_path(exe_path_buf);
-    auto parent = compiler_path.parent_path();
-    std::filesystem::path lib_dir = parent;
-    if (parent.filename() == "bin") {
-        lib_dir = parent.parent_path() / "lib";
-    } else if (std::filesystem::exists(parent / "lib")) {
-        lib_dir = parent / "lib";
-    }
+    if (GetModuleFileNameA(nullptr, exe_path_buf, MAX_PATH) == 0)
+        bin_dir = std::filesystem::current_path();
+    else
+        bin_dir = std::filesystem::path(exe_path_buf).parent_path();
 #else
-    auto lib_dir = std::filesystem::current_path() / "build" / "Release";
+    char    result[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+    if (count != -1)
+        bin_dir =
+            std::filesystem::path(std::string(result, static_cast<size_t>(count))).parent_path();
+    else
+        bin_dir = std::filesystem::current_path();
 #endif
 
-    std::string linker  = find_linker();
+    std::filesystem::path lib_dir = bin_dir;
+
+    // Robust check for library location
+#ifdef _WIN32
+    std::string test_lib = "druk-core.lib";
+#else
+    std::string test_lib = "libdruk-core.a";
+#endif
+
+    if (!std::filesystem::exists(bin_dir / test_lib))
+    {
+        if (bin_dir.filename() == "bin")
+        {
+            if (std::filesystem::exists(bin_dir.parent_path() / "lib" / test_lib))
+                lib_dir = bin_dir.parent_path() / "lib";
+        }
+        else if (std::filesystem::exists(bin_dir / "lib" / test_lib))
+        {
+            lib_dir = bin_dir / "lib";
+        }
+    }
+
+    std::string linker = find_linker();
     if (linker.empty())
+    {
+        std::cerr << "Linker not found.\n";
         return false;
+    }
+
     std::stringstream cmd;
+#ifdef _WIN32
     cmd << "\"";
     auto vcvars = find_vcvars(linker);
     if (!vcvars.empty())
@@ -61,6 +94,26 @@ bool LLVMCodeGen::link_executable(const std::string& obj, const std::string& exe
     cmd << " /LIBPATH:\"" << lib_dir.string() << "\"";
     for (const auto& lib : libs) cmd << " " << lib;
     cmd << "\"";
+#else
+    cmd << linker << " -o \"" << exe << "\" \"" << obj << "\"";
+    // On Linux, libraries are usually libdruk-core.a, etc.
+    // And we need -L for lib path and -l for each lib.
+    cmd << " -L\"" << lib_dir.string() << "\"";
+    // Note: link order matters!
+    std::vector<std::string> libs = {"druk-core",  "druk_parser",  "druk_semantic",
+                                     "druk_lexer", "druk_runtime", "druk_util"};
+    for (const auto& lib : libs) cmd << " -l" << lib;
+
+    // Add required system libs for AOT
+    cmd << " -lstdc++ -lm -luuid -lz -lzstd -licuuc -licudata";
+
+    // LLVM libs might be needed too if not statically linked into druk-core
+    // But docker build usually links them in. Let's see.
+#endif
+
+    if (debug_)
+        std::cout << "Linking: " << cmd.str() << "\n";
+
     return std::system(cmd.str().c_str()) == 0;
 }
 

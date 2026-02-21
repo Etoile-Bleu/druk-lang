@@ -5,8 +5,26 @@
 #include "druk/gc/types/gc_string.h"
 #include "druk/gc/types/gc_struct.h"
 
+
 namespace druk::codegen
 {
+
+Value::Value(gc::GcString* v) : type_(ValueType::String)
+{
+    data_.str = v;
+}
+Value::Value(gc::GcArray* v) : type_(ValueType::Array)
+{
+    data_.arr = v;
+}
+Value::Value(gc::GcStruct* v) : type_(ValueType::Struct)
+{
+    data_.struc = v;
+}
+Value::Value(ObjFunction* v) : type_(ValueType::Function)
+{
+    data_.func = v;
+}
 
 std::string_view Value::asString() const
 {

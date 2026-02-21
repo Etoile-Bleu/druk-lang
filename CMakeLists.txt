@@ -16,12 +16,14 @@ if(MSVC)
     add_compile_options(/W3 /permissive- /volatile:iso /Zc:inline /utf-8)
     # Disable noisy LLVM warnings and CRT warnings
     add_compile_options(/wd4244 /wd4267 /wd4146 /wd4291 /wd4996 /wd4018)
+    # Suppress character conversion error in googletest (C++20 char8_t)
+    add_compile_options(-Wno-error=character-conversion)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
     set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi")
 else()
     add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -flto")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -fsanitize=address,undefined")
 endif()
 
@@ -30,8 +32,10 @@ if(NOT EMSCRIPTEN)
     find_package(ICU REQUIRED COMPONENTS uc data)
     message(STATUS "Found ICU ${ICU_VERSION}")
     
-    # LLVM for JIT compilation - using LLVM 22.1.0-rc3
-    set(LLVM_DIR "C:/dev/clang+llvm-22.1.0-rc3-x86_64-pc-windows-msvc/lib/cmake/llvm" CACHE PATH "LLVM CMake directory")
+    # LLVM for JIT compilation
+    if(WIN32)
+        set(LLVM_DIR "C:/dev/clang+llvm-22.1.0-rc3-x86_64-pc-windows-msvc/lib/cmake/llvm" CACHE PATH "LLVM CMake directory")
+    endif()
     find_package(LLVM CONFIG REQUIRED)
     if(LLVM_FOUND)
         message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

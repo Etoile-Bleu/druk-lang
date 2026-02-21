@@ -2,13 +2,18 @@
 
 #include "druk/codegen/core/value.h"
 
-
-namespace druk::gc
+namespace druk
 {
+namespace gc
+{
+
+GcArray::GcArray() : GcObject(GcType::Array) {}
+GcArray::~GcArray() = default;
 
 void GcArray::trace()
 {
     for (auto& elem : elements) elem.markGcRefs();
 }
 
-}  // namespace druk::gc
+}  // namespace gc
+}  // namespace druk

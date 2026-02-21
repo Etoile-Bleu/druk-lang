@@ -1,6 +1,8 @@
 #ifdef DRUK_HAVE_LLVM
+// DRUK_BUILD_FIX_v1
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/AtomicOrdering.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
@@ -59,7 +61,7 @@ LLVMBackend::CompiledFunc LLVMBackend::compileFunction(ir::Function* function)
         ctx_->module.reset(new llvm::Module("druk", *ctx_->context));
         ctx_->builder.reset(new llvm::IRBuilder<>(*ctx_->context));
         ctx_->module->setDataLayout(ctx_->jit->getDataLayout());
-        ctx_->module->setTargetTriple(llvm::Triple(llvm::sys::getDefaultTargetTriple()));
+        ctx_->module->setTargetTriple(ctx_->jit->getTargetTriple());
         return compiled;
     }
     return nullptr;

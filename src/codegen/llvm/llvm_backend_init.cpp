@@ -1,7 +1,5 @@
 #ifdef DRUK_HAVE_LLVM
 
-#include "druk/codegen/llvm/llvm_backend.h"
-
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/DynamicLibrary.h>
@@ -10,6 +8,8 @@
 #include <llvm/TargetParser/Triple.h>
 
 #include <stdexcept>
+
+#include "druk/codegen/llvm/llvm_backend.h"
 
 extern "C"
 {
@@ -29,14 +29,15 @@ LLVMBackend::CompilationContext::CompilationContext()
 {
 }
 
-LLVMBackend::LLVMBackend(bool debug) : ctx_(std::make_unique<CompilationContext>()), debug_(debug)
+LLVMBackend::LLVMBackend(bool debug) : debug_(debug), ctx_(std::make_unique<CompilationContext>())
 {
     LLVMInitializeX86TargetInfo();
     LLVMInitializeX86Target();
     LLVMInitializeX86TargetMC();
     LLVMInitializeX86AsmPrinter();
 
-    llvm::Triple        triple(llvm::sys::getDefaultTargetTriple());
+    std::string         triple_str = llvm::sys::getDefaultTargetTriple();
+    llvm::Triple        triple{llvm::Twine{triple_str}};
     std::string         error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple, error);
     if (!target)
@@ -51,7 +52,7 @@ LLVMBackend::LLVMBackend(bool debug) : ctx_(std::make_unique<CompilationContext>
 
     ctx_->module = std::make_unique<llvm::Module>("druk", *ctx_->context);
     ctx_->module->setDataLayout(ctx_->jit->getDataLayout());
-    ctx_->module->setTargetTriple(triple);
+    ctx_->module->setTargetTriple(ctx_->jit->getTargetTriple());
 
     register_runtime_symbols();
     register_extended_symbols();
