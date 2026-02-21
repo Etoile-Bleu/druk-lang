@@ -26,15 +26,13 @@ jobs:
     - name: Install ICU via vcpkg
       run: C:\vcpkg\vcpkg.exe install icu:x64-windows
       
-    - name: Install LLVM 18
+    - name: Use Local LLVM 22
       run: |
-        Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe" -OutFile llvm.exe
-        Start-Process -Wait -NoNewWindow -FilePath .\llvm.exe -ArgumentList "/S", "/D=C:\LLVM"
-        echo "C:\LLVM\bin" >> $env:GITHUB_PATH
+        echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
 
     - name: Configure CMake
       run: |
-        cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DLLVM_DIR="C:/LLVM/lib/cmake/llvm"
+        cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DLLVM_DIR="C:/Program Files/LLVM/lib/cmake/llvm"
 
     - name: Build Druk
       run: cmake --build build --config Release
