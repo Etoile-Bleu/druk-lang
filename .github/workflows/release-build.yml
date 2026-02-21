@@ -50,7 +50,7 @@ jobs:
         
         # The installer executable is now ready
         $version = "${{ github.event.release.tag_name || github.ref_name }}"
-        Move-Item -Path "build-installer\druk-installer.exe" -Destination "Druk-Installer-v$version-windows-x64.exe"
+        Move-Item -Path "build-installer\druk-installer.exe" -Destination "Druk-Installer-$version-windows-x64.exe"
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2

@@ -26,6 +26,8 @@ dist/
 *.lib
 *.a
 
+actions-runner/
+
 # CMake
 CMakeCache.txt
 CMakeFiles/
