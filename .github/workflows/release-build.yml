@@ -29,11 +29,11 @@ jobs:
       
     - name: Use Local LLVM 22
       run: |
-        echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+        echo "C:\dev\clang+llvm-22.1.0-rc3-x86_64-pc-windows-msvc\bin" >> $env:GITHUB_PATH
 
     - name: Configure CMake
       run: |
-        cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DLLVM_DIR="C:/Program Files/LLVM/lib/cmake/llvm" -DDRUK_VERSION=${{ github.event.release.tag_name }}
+        cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DLLVM_DIR="C:/dev/clang+llvm-22.1.0-rc3-x86_64-pc-windows-msvc/lib/cmake/llvm" -DDRUK_VERSION=${{ github.event.release.tag_name }}
 
     - name: Build Druk
       run: cmake --build build --config Release
