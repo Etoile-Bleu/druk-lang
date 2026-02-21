@@ -2,7 +2,6 @@
 
 #include <cctype>
 
-
 namespace druk::lexer
 {
 
@@ -13,7 +12,8 @@ Lexer::Lexer(std::string_view source, util::ArenaAllocator& arena, StringInterne
       interner_(interner),
       errors_(errors),
       currentOffset_(0),
-      line_(1)
+      line_(1),
+      column_(1)
 {
     if (source_.length() >= 3 && (unsigned char)source_[0] == 0xEF &&
         (unsigned char)source_[1] == 0xBB && (unsigned char)source_[2] == 0xBF)
@@ -60,7 +60,8 @@ Token Lexer::next()
         case ')':
             return makeToken(TokenType::RParen);
         case '{':
-            if (interpolationDepth_ > 0) interpolationDepth_++;
+            if (interpolationDepth_ > 0)
+                interpolationDepth_++;
             return makeToken(TokenType::LBrace);
         case '}':
             if (interpolationDepth_ > 0)
@@ -69,7 +70,7 @@ Token Lexer::next()
                 if (interpolationDepth_ == 0)
                 {
                     // We are closing the interpolated expression, resume scanning the string
-                    return scanString(true); 
+                    return scanString(true);
                 }
             }
             return makeToken(TokenType::RBrace);
@@ -104,9 +105,7 @@ Token Lexer::next()
                 return makeToken(TokenType::And);
             break;
         case '|':
-            if (match('|'))
-                return makeToken(TokenType::Or);
-            break;
+            return makeToken(match('|') ? TokenType::Or : TokenType::Pipe);
         case '=':
             return makeToken(match('=') ? TokenType::EqualEqual : TokenType::Equal);
         case '<':
@@ -129,6 +128,7 @@ Token Lexer::makeToken(TokenType type)
     token.offset  = startOffset_;
     token.length  = static_cast<uint32_t>(currentOffset_ - startOffset_);
     token.line    = line_;
+    token.column  = column_ - token.length;
     token.padding = 0;
     return token;
 }
@@ -146,6 +146,7 @@ Token Lexer::makeErrorToken([[maybe_unused]] const char* message)
 
 char Lexer::advance()
 {
+    column_++;
     return source_[currentOffset_++];
 }
 
@@ -188,6 +189,7 @@ void Lexer::skipWhitespace()
                 break;
             case '\n':
                 line_++;
+                column_ = 1;
                 advance();
                 break;
             case '/':

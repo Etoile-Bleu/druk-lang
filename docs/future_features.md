@@ -2,99 +2,79 @@
 
 Druk is designed to be a **Simple, High-Performance, GC-backed** language. We want developers to focus on logic without worrying about manual memory management, while still enjoying the speed of an LLVM-compiled binary.
 
-This document outlines "gigantic" ideas for the future evolution of Druk.
+En s'inspirant des géants modernes comme **Python** (pour l'ergonomie, la productivité et l'écosystème) et **Rust** (pour la sécurité, l'outillage et l'expressivité), voici la liste priorisée des fonctionnalités critiques (Gigantic Features) qui manquent encore à Druk pour devenir un langage de production incontournable.
 
 ---
 
-## 1. Core Language & Productivity
+## ⚡ Priorité 1 : Ergonomie & Expressivité (Inspiré de Python)
 
-### First-Class Functions & Closures
-*   **The Goal**: Make functions treatable as values.
-*   **Feature**: Lambda expressions and anonymous functions.
-*   **Why**: Essential for modern programming patterns (map, filter, sort).
+Pour que Druk soit adopté, il doit être aussi agréable à écrire que Python, tout en tournant à la vitesse du C++.
 
-### Pattern Matching (Matching)
-*   **The Goal**: Safe and expressive branching.
-*   **Feature**: A `འགྲིག་པ་` (*'grig pa* - match) statement that supports deconstructing structs and checking values.
-*   **Example**:
-    ```dzongkha
-    འགྲིག་པ་ x {
-        ༡ -> བཀོད་ "One";
-        ༢ -> བཀོད་ "Two";
-        _ -> བཀོད་ "Other";
-    }
-    ```
+### 1. Dictionnaires Natifs (HashMaps)
+*   **The Goal**: Manipulation de données ultra-rapide.
+*   **Feature**: Un type natif `[Key: Value]`.
+*   **Pourquoi c'est vital (Python)**: L'ADN de Python repose sur les `dict`. Impossible d'imaginer parser du JSON ou gérer des états complexes sans ça.
 
-### Built-in Dictionary/Map Type
-*   **The Goal**: Easy data organization.
-*   **Feature**: A native `Map<K, V>` type with syntax like `[ "key": "value" ]`.
-*   **Why**: Crucial for almost any modern application (web, scripts, data).
+### 2. Fonctions de Première Classe & Closures (Lambdas)
+*   **The Goal**: Programmation Fonctionnelle.
+*   **Feature**: Fonctions anonymes et passage de fonctions en paramètres.
+*   **Pourquoi c'est vital (Python/JS)**: Permet des API modernes (callbacks, `map`, `filter`, `reduce`).
 
-### String Interpolation
-*   **The Goal**: Readable string formatting.
-*   **Feature**: Embedded expressions in strings. `བཀོད་ "Hello {name}, you are {age} years old!";`
+### 3. String Interpolation (f-strings)
+*   **The Goal**: Formatage de texte lisible.
+*   **Feature**: Syntaxe `f"Bonjour {nom}, tu as {calcul()}"`.
+*   **Pourquoi c'est vital (Python)**: Les f-strings ont révolutionné la propreté du code Python. Concaténer avec `+` est préhistorique.
 
-### Null Safety (Option Types)
-*   **The Goal**: "Don't care about memory" includes "Don't crash because of Null".
-*   **Feature**: Non-nullable types by default. Optional types using `?`.
-*   **Why**: High reliability with zero manual overhead.
+### 4. Modules et Imports Natifs (Système de Packages)
+*   **The Goal**: Réutilisation du code.
+*   **Feature**: Pouvoir diviser son code avec `import utils` ou `from math import sin`.
+*   **Pourquoi c'est vital (Python/Rust)**: Un langage sans système de module ne peut pas dépasser le stade de "script d'un seul fichier".
 
 ---
 
-## 2. Performance & Optimization
+## 🛡️ Priorité 2 : Sécurité Typage & Contrôle (Inspiré de Rust)
 
-### Lightweight Concurrency (Green Threads)
-*   **The Goal**: Go-like performance with simple syntax.
-*   **Feature**: A `འགྲུལ་` (*'grul* - travel/process) keyword to spawn a concurrent task.
-*   **Why**: Utilize multi-core CPUs without the complexity of threads/locks.
+Druk a un GC, on n'a donc pas besoin du Borrow Checker de Rust. Mais Rust brille par d'autres aspects de sécurité qu'il *faut* voler.
 
-### Just-In-Time (JIT) Tiering
-*   **The Goal**: Start fast, stay fast.
-*   **Feature**: Multi-tier compilation. Quick JIT for startup, optimized LLVM for hot loops.
+### 1. Null Safety Absolue (Types Optionnels)
+*   **The Goal**: Éradiquer la *Billion Dollar Mistake* (NullPointerException).
+*   **Feature**: Pas de `null` implicite. Utilisation du type `Option<T>` (ou `?T`).
+*   **Pourquoi c'est vital (Rust)**: Dans Rust, le compilateur t'oblige à gérer l'absence de valeur. Si ça compile, ça ne crash pas sur un `null`. Druk doit offrir cette même garantie (grâce au Pattern Matching).
 
-### SIMD Vectorization
-*   **The Goal**: Extreme speed for math.
-*   **Feature**: Auto-vectorization for array operations using LLVM's SIMD primitives.
+### 2. Gestion des Erreurs Explicite (Result<T, E>)
+*   **The Goal**: Fini les Exceptions invisibles.
+*   **Feature**: Les fonctions qui peuvent échouer retournent un type `Result` (Succès ou Erreur).
+*   **Pourquoi c'est vital (Rust/Go)**: Savoir immédiatement en lisant la signature d'une fonction si elle peut crasher, et forcer le traitement de l'erreur.
 
-### Low-Latency Garbage Collection
-*   **The Goal**: "S'en fou de la mémoire" but without the "stop-the-world" pauses.
-*   **Feature**: Implementation of a concurrent, generational GC (using the work already started in `gc_heap`).
-
----
-
-## 3. Localization & Unique Identity
-
-### Tibetan Date & Calendar Library
-*   **The Goal**: Native support for the Lunar calendar.
-*   **Feature**: Built-in functions to handle Tibetan dates, horoscopes, and time tracking.
-
-### Native Numeral Operations
-*   **The Goal**: Treat ༡ + ༢ as naturally as 1 + 2.
-*   **Feature**: Full first-class support for Tibetan numerals in literal math, ensuring zero performance penalty compared to ASCII digits.
+### 3. Traits / Interfaces (Polymorphisme sans héritage)
+*   **The Goal**: Partage de comportements sûr.
+*   **Feature**: Définir des contrats (ex: `Printable`, `Iterable`) au lieu d'utiliser l'héritage objet classique.
+*   **Pourquoi c'est vital (Rust)**: C'est plus flexible et plus sûr que l'héritage classique (C++/Java) qui finit en plat de spaghettis.
 
 ---
 
-## 4. Ecosystem & Tooling
+## 🚀 Priorité 3 : Concurrence & Outillage (Inspiré de Go/Rust)
 
-### Standard Library (Druk-Std)
-*   **I/O**: Simple file reading/writing.
-*   **Network**: High-performance HTTP client/server (built on top of the green thread system).
-*   **JSON**: Native serialization/deserialization for structs.
+### 1. Concurrence Légère (Green Threads / Goroutines)
+*   **The Goal**: Serveurs web ultra-rapides.
+*   **Feature**: Mot-clé `འགྲུལ་` (spawn) pour lancer des milliers de tâches sans bloquer l'OS, gérées par un scheduler interne Druk.
+*   **Pourquoi c'est vital (Go)**: La concurrence moderne ne doit pas être un cauchemar de mutex et de threads POSIX.
 
-### Interoperability (FFI)
-*   **The Goal**: Access the world of C.
-*   **Feature**: Easy foreign function interface to call existing C libraries (libuv, openssl, etc.).
+### 2. Cargo pour Druk (Gestionnaire de Paquets Universel)
+*   **The Goal**: Tout outillage centralisé.
+*   **Feature**: Un outil CLI (ex: `druk-cli`) qui fait TOUT : `druk build`, `druk test`, `druk run`, `druk install json-parser`.
+*   **Pourquoi c'est vital (Rust/Cargo)**: Cargo est la raison n°1 pour laquelle l'écosystème Rust est si plaisant. 1 outil, 0 configuration.
 
-### Druk LSP (Language Server Protocol)
-*   **The Goal**: Modern IDE support.
-*   **Feature**: Real-time error highlighting, autocompletion (in both Romanized and Tibetan script), and go-to-definition.
+### 3. Standard Library Complète (Druk-Std)
+*   **The Goal**: 'Batteries Included' (Comme Python).
+*   **Feature**: JSON, HTTP, Fichiers, Regex natifs. FFI simple pour appeler du C (libcurl, etc.).
 
 ---
 
-## 5. Design Philosophy: The "Simple & Fast" Rule
+## ⚙️ Priorité 4 : Optimisations Bas Niveau LLVM
 
-Every new feature in Druk must pass two tests:
-1.  **Can a beginner understand it in 5 minutes?**
-2.  **Does it have a path to O(1) or O(N) performance via LLVM?**
+### 1. SIMD Automatique & Vectorisation
+*   **Feature**: Utiliser les types de vecteurs natifs LLVM pour que les opérations sur les tableaux (Array) de Druk volent littéralement.
 
-We ignore memory safety *ceremonies* (like lifetimes/manual free) in favor of a robust GC, allowing the developer's mind to stay on the problem, not the hardware.
+### 2. JIT Tiering avancé
+*   **Feature**: Démarrage instantané via interprétation, bascule automatique sur compilation LLVM ultra-optimisée pour les boucles chaudes (Hot Loops).

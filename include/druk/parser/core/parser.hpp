@@ -66,6 +66,7 @@ class Parser
     bool         isAtEnd() const;
     void         synchronize();
     void         error(lexer::Token token, std::string_view message);
+    void         warn(lexer::Token token, std::string_view message);
 
     lexer::Lexer           lexer_;
     util::ArenaAllocator&  arena_;

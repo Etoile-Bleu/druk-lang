@@ -9,6 +9,7 @@ Parser::Parser(std::string_view source, util::ArenaAllocator& arena,
       arena_(arena),
       interner_(interner),
       errors_(errors),
+      previous_{},
       panicMode_(false)
 {
     current_  = lexer_.next();
@@ -53,7 +54,7 @@ lexer::Token Parser::consume(lexer::TokenType kind, std::string_view message)
 {
     if (check(kind))
         return advance();
-    error(current_, message);
+    error(previous_, message);
     if (current_.type != lexer::TokenType::EndOfFile)
         advance();
     return current_;

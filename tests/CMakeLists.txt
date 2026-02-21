@@ -3,7 +3,6 @@ include(GoogleTest)
 # ─── Shared include path for test helpers ─────────────────────────────────────
 set(TEST_HELPERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-# ─── 1. Lexer tests ───────────────────────────────────────────────────────────
 add_executable(druk_lexer_tests
     unit/lexer/test_lexer_tokens.cpp
     unit/lexer/test_lexer_keywords.cpp

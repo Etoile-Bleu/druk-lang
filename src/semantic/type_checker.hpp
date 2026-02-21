@@ -4,8 +4,9 @@
 #include "druk/semantic/symbol_table.hpp"
 #include "druk/util/error_handler.hpp"
 
-namespace druk::ir {
-    class Function;
+namespace druk::ir
+{
+class Function;
 }
 
 namespace druk::semantic
@@ -70,7 +71,16 @@ class TypeChecker : public parser::ast::Visitor
     {
         util::Diagnostic diag;
         diag.severity = util::DiagnosticsSeverity::Error;
-        diag.location = {token.line, 0, token.offset, token.length};
+        diag.location = {token.line, token.column, token.offset, token.length};
+        diag.message  = std::move(message);
+        errors_.report(diag);
+    }
+
+    void warn(const lexer::Token& token, std::string message)
+    {
+        util::Diagnostic diag;
+        diag.severity = util::DiagnosticsSeverity::Warning;
+        diag.location = {token.line, token.column, token.offset, token.length};
         diag.message  = std::move(message);
         errors_.report(diag);
     }

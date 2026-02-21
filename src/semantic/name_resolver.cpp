@@ -1,5 +1,8 @@
 #include "name_resolver.hpp"
 
+#include "druk/parser/ast/lambda.hpp"
+#include "druk/parser/ast/stmt.hpp"
+
 namespace druk::semantic
 {
 
@@ -74,9 +77,10 @@ void NameResolver::visit(parser::ast::Stmt* stmt)
             }
             // Functions can be nested? If so, we'd need another pass inside.
             // For now, assume top-level or single level nesting.
-            if (func->body->kind == parser::ast::NodeKind::Block) {
-                 auto* block = static_cast<parser::ast::BlockStmt*>(func->body);
-                 defineSymbols({block->statements, block->statements + block->count});
+            if (func->body->kind == parser::ast::NodeKind::Block)
+            {
+                auto* block = static_cast<parser::ast::BlockStmt*>(func->body);
+                defineSymbols({block->statements, block->statements + block->count});
             }
             resolve(func->body);
             table_.exitScope();
@@ -190,7 +194,8 @@ void NameResolver::visit(parser::ast::Expr* expr)
             {
                 util::Diagnostic diag;
                 diag.severity = util::DiagnosticsSeverity::Error;
-                diag.location = {var->name.line, 0, var->name.offset, var->name.length};
+                diag.location = {var->name.line, var->name.column, var->name.offset,
+                                 var->name.length};
                 diag.message = "Undeclared variable '" + std::string(var->name.text(source_)) + "'";
                 errors_.report(diag);
             }
@@ -233,6 +238,19 @@ void NameResolver::visit(parser::ast::Expr* expr)
         {
             auto* mem = static_cast<parser::ast::MemberAccessExpr*>(expr);
             resolve(mem->object);
+            break;
+        }
+        case parser::ast::NodeKind::Lambda:
+        {
+            auto* lambda = static_cast<parser::ast::LambdaExpr*>(expr);
+            table_.enterScope();
+            for (uint32_t i = 0; i < lambda->paramCount; ++i)
+            {
+                table_.define(std::string(lambda->params[i].name.text(source_)),
+                              {lambda->params[i].name, Type::makeError()});
+            }
+            resolve(lambda->body);
+            table_.exitScope();
             break;
         }
         case parser::ast::NodeKind::Literal:

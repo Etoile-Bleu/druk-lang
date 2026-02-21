@@ -16,8 +16,6 @@ if(MSVC)
     add_compile_options(/W3 /permissive- /volatile:iso /Zc:inline /utf-8)
     # Disable noisy LLVM warnings and CRT warnings
     add_compile_options(/wd4244 /wd4267 /wd4146 /wd4291 /wd4996 /wd4018)
-    # Suppress character conversion error in googletest (C++20 char8_t)
-    add_compile_options(-Wno-error=character-conversion)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
     set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi")
@@ -95,8 +93,10 @@ endif()
 add_library(druk_util STATIC
     src/util/arena_allocator.cpp
     src/util/error_handler.cpp
+    src/util/error_formatter.cpp
     src/util/interner.cpp
     src/util/utf8.cpp
+    src/util/update_checker.cpp
 )
 target_include_directories(druk_util PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include

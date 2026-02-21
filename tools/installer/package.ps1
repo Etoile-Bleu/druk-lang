@@ -8,9 +8,16 @@ if (Test-Path $staging) {
 New-Item -ItemType Directory -Path "$staging/bin" -Force | Out-Null
 New-Item -ItemType Directory -Path "$staging/lib" -Force | Out-Null
 
-Copy-Item -Path "$SourceDir/build/Release/druk.exe" -Destination "$staging/bin" -Force
-Copy-Item -Path "$SourceDir/build/Release/*.lib" -Destination "$staging/lib" -Force
+# MSBuild creates Release subfolder, Ninja does not. Try both.
+$exePath = if (Test-Path "$SourceDir/build/Release/druk.exe") { "$SourceDir/build/Release/druk.exe" } else { "$SourceDir/build/druk.exe" }
+$libPath = if (Test-Path "$SourceDir/build/Release/druk.exe") { "$SourceDir/build/Release/*.lib" } else { "$SourceDir/build/*.lib" }
 
+if (Test-Path $exePath) { Copy-Item -Path $exePath -Destination "$staging/bin" -Force }
+
+$libDir = if (Test-Path "$SourceDir/build/Release/druk.exe") { "$SourceDir/build/Release" } else { "$SourceDir/build" }
+if (Test-Path "$libDir\*.lib") {
+    Copy-Item -Path "$libDir\*.lib" -Destination "$staging/lib" -Force -ErrorAction SilentlyContinue 
+}
 if (Test-Path "$SourceDir/include") {
     Copy-Item -Path "$SourceDir/include" -Destination "$staging/" -Recurse -Force
 }

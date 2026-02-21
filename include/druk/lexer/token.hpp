@@ -18,7 +18,6 @@ enum class TokenType : uint16_t
     InterpolatedStringPart,
     InterpolatedStringEnd,
 
-
     // Keywords
     KwFunction,  // ལས་འགན་
     KwNumber,    // གྲངས་
@@ -65,24 +64,28 @@ enum class TokenType : uint16_t
     Question,
     KwNil,
     Underscore,
+    Pipe,
 
     Count
 };
 
 struct Token
 {
-    TokenType type;
-    uint16_t  padding;  // Padding to align
-    uint32_t  offset;
-    uint32_t  length;
-    uint32_t  line;
+    TokenType type    = TokenType::EndOfFile;
+    uint16_t  padding = 0;
+    uint32_t  offset  = 0;
+    uint32_t  length  = 0;
+    uint32_t  line    = 1;
+    uint32_t  column  = 0;
 
     [[nodiscard]] std::string_view text(std::string_view source) const
     {
+        if (offset + length > source.length())
+            return "";
         return source.substr(offset, length);
     }
 };
 
-static_assert(sizeof(Token) == 16, "Token must be 16 bytes");
+static_assert(sizeof(Token) == 20, "Token must be 20 bytes");
 
 }  // namespace druk::lexer

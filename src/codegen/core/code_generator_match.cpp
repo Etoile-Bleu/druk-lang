@@ -25,7 +25,10 @@ void CodeGenerator::visitMatch(parser::ast::MatchStmt* stmt)
         auto  nextArm = std::make_unique<ir::BasicBlock>("match.next", parentFunc);
         auto* armPtr  = armBody.get();
         auto* nextPtr = nextArm.get();
-        visit(arm.pattern);
+        if (arm.pattern)
+            visit(arm.pattern);
+        else
+            lastValue_ = nullptr;
         auto* patternVal = lastValue_;
         if (patternVal)
         {

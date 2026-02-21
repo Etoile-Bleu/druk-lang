@@ -1,0 +1,55 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-pack:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      id: vcpkg-cache
+      with:
+        path: |
+          C:\vcpkg\installed
+          C:\vcpkg\packages
+          C:\vcpkg\archives
+        key: ${{ runner.os }}-vcpkg-icu
+
+    - name: Install ICU via vcpkg
+      run: vcpkg install icu:x64-windows
+      
+    - name: Install LLVM 18
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe" -OutFile llvm.exe
+        Start-Process -Wait -NoNewWindow -FilePath .\llvm.exe -ArgumentList "/S", "/D=C:\LLVM"
+        echo "C:\LLVM\bin" >> $env:GITHUB_PATH
+
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DLLVM_DIR="C:/LLVM/lib/cmake/llvm" -DDRUK_VERSION=${{ github.event.release.tag_name }}
+
+    - name: Build Druk
+      run: cmake --build build --config Release
+
+    - name: Package Native Installer
+      run: |
+        # Build the native installer app
+        cmake -S tools/installer -B build-installer -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+        cmake --build build-installer --config Release
+        
+        # The installer executable is now ready
+        Move-Item -Path "build-installer\druk-installer.exe" -Destination "Druk-Installer-v${{ github.event.release.tag_name }}-windows-x64.exe"
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: Druk-Installer-*-windows-x64.exe

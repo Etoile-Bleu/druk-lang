@@ -1,7 +1,6 @@
 #include "druk/parser/ast/expr.hpp"
 #include "type_checker.hpp"
 
-
 namespace druk::semantic
 {
 
@@ -28,6 +27,8 @@ void TypeChecker::visitUnwrapExpr(parser::ast::UnwrapExpr* expr)
     }
     else if (operandType.kind == TypeKind::Option)
     {
+        warn(expr->token,
+             "Unwrapping an option is technically unsafe. Consider using a match statement.");
         currentType_ = *operandType.elementType;
     }
     else
@@ -100,10 +101,10 @@ void TypeChecker::visitInterpolatedStringExpr(parser::ast::InterpolatedStringExp
 {
     for (uint32_t i = 0; i < expr->count; ++i)
     {
-        analyze(expr->parts[i]); 
+        analyze(expr->parts[i]);
         // We will allow any type to be stringified at runtime
     }
-    
+
     currentType_ = Type::makeString();
     expr->type   = currentType_;
 }

@@ -4,15 +4,16 @@
 
 #include "druk/codegen/core/chunk.h"
 #include "druk/codegen/core/code_generator.h"
+#include "druk/codegen/llvm/llvm_codegen.h"
 #include "druk/lexer/lexer.hpp"
 #include "druk/lexer/unicode.hpp"
 #include "druk/parser/core/parser.hpp"
 #include "druk/semantic/analyzer.hpp"
 #include "druk/util/arena_allocator.hpp"
 #include "druk/util/error_handler.hpp"
+#include "druk/util/update_checker.hpp"
 #include "druk/vm/vm.hpp"
 
-#include "druk/codegen/llvm/llvm_codegen.h"
 #ifdef DRUK_HAVE_LLVM
 #include "druk/codegen/llvm/llvm_jit.h"
 extern "C" void druk_jit_set_args(const char** argv, int32_t argc);
@@ -98,12 +99,16 @@ int main(int argc, char* argv[])
     auto args     = druk::filter_args(argc, argv, debug);
     int  argCount = static_cast<int>(args.size());
 
+    druk::util::checkUpdateAsync();
+
     if (argCount < 2)
     {
         std::cout << "Druk Language Compiler v1.0.0 (Modular Refactor)\n";
         std::cout << "\nUsage: druk [path]                    (Run script)\n";
         std::cout << "       druk --vm [path]                (Run with VM interpreter)\n";
         std::cout << "       druk compile [path] -o [exe]    (Compile to executable)\n";
+
+        druk::util::printUpdateNotice("v1.0.0");
         return 0;
     }
 
@@ -144,17 +149,24 @@ int main(int argc, char* argv[])
     druk::parser::Parser parser(source, arena, interner, errors);
     auto                 statements = parser.parse();
 
+    if (!errors.diagnostics().empty())
+    {
+        errors.print(source, inputFile);
+    }
     if (errors.hasErrors())
     {
-        errors.print(source);
         return 1;
     }
 
     // Phase 2: Semantic Analysis
     druk::semantic::Analyzer analyzer(errors, interner, source);
-    if (!analyzer.analyze(statements))
+    bool                     semOk = analyzer.analyze(statements);
+    if (!errors.diagnostics().empty())
     {
-        errors.print(source);
+        errors.print(source, inputFile);
+    }
+    if (!semOk || errors.hasErrors())
+    {
         return 1;
     }
 
@@ -208,9 +220,13 @@ int main(int argc, char* argv[])
 
     druk::ir::Module             irModule("main");
     druk::codegen::CodeGenerator codegen(irModule, errors, source);
-    if (!codegen.generate(statements))
+    bool                         codeGenOk = codegen.generate(statements);
+    if (!errors.diagnostics().empty())
     {
-        errors.print(source);
+        errors.print(source, inputFile);
+    }
+    if (!codeGenOk || errors.hasErrors())
+    {
         return 1;
     }
 
@@ -270,6 +286,7 @@ int main(int argc, char* argv[])
         << "Bytecode VM is temporarily unavailable during strict IR refactor. LLVM not enabled.\n";
 #endif
 
+    druk::util::printUpdateNotice("v1.0.0");
     return 0;
 
     /*
