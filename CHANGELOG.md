@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/Etoile-Bleu/druk-lang/compare/v1.0.1...v1.0.2) (2026-02-21)
+
+
+### Bug Fixes
+
+* installer filename versioning ([2479d74](https://github.com/Etoile-Bleu/druk-lang/commit/2479d7473c75cd28af9ff197aa8310cf46f9e426))
+
 ## 1.0.0 (2026-02-21)
 
 
