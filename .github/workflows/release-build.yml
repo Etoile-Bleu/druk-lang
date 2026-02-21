@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build-and-pack:
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
     - uses: actions/checkout@v4
