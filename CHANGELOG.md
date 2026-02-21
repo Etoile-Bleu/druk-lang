@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/Etoile-Bleu/druk-lang/compare/v1.0.1...v1.0.2) (2026-02-21)
+
+
+### Bug Fixes
+
+* diagnostic format in main and installer dependency tracking ([6e785db](https://github.com/Etoile-Bleu/druk-lang/commit/6e785dbf9e5fa379c9de3ce44869a9696758730b))
+
 ## [1.0.1](https://github.com/Etoile-Bleu/druk-lang/compare/v1.0.0...v1.0.1) (2026-02-21)
 
 
