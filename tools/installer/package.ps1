@@ -8,9 +8,12 @@ if (Test-Path $staging) {
 New-Item -ItemType Directory -Path "$staging/bin" -Force | Out-Null
 New-Item -ItemType Directory -Path "$staging/lib" -Force | Out-Null
 
-# MSBuild creates Release subfolder, Ninja does not. Try both.
-$exePath = if (Test-Path "$SourceDir/build/Release/druk.exe") { "$SourceDir/build/Release/druk.exe" } else { "$SourceDir/build/druk.exe" }
-$libPath = if (Test-Path "$SourceDir/build/Release/druk.exe") { "$SourceDir/build/Release/*.lib" } else { "$SourceDir/build/*.lib" }
+# MSBuild creates Release subfolder, Ninja does not. Pick the newest one.
+$allExes = Get-ChildItem -Path "$SourceDir/build/**/druk.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+$exePath = if ($allExes) { $allExes[0].FullName } else { "$SourceDir/build/druk.exe" }
+
+$allLibs = Get-ChildItem -Path "$SourceDir/build/**/*.lib" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+$libDir = if ($allLibs) { $allLibs[0].DirectoryName } else { "$SourceDir/build" }
 
 if (Test-Path $exePath) { Copy-Item -Path $exePath -Destination "$staging/bin" -Force }
 

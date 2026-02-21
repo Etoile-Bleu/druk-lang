@@ -21,7 +21,8 @@ add_executable(druk-installer WIN32
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/payload.zip"
     COMMAND powershell -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/package.ps1" -SourceDir "${CMAKE_CURRENT_SOURCE_DIR}/../.." -DestZip "${CMAKE_CURRENT_SOURCE_DIR}/payload.zip"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../../build/druk.exe" "${CMAKE_CURRENT_SOURCE_DIR}/package.ps1"
+    # We depend on the script itself. The script will find the correct binaries.
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/package.ps1"
     COMMENT "Packaging compiler assets into payload.zip"
     VERBATIM
 )
