@@ -25,7 +25,7 @@ jobs:
         key: ${{ runner.os }}-vcpkg-icu
 
     - name: Install ICU via vcpkg
-      run: vcpkg install icu:x64-windows
+      run: C:\vcpkg\vcpkg.exe install icu:x64-windows
       
     - name: Install LLVM 18
       run: |
