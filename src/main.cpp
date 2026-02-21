@@ -103,12 +103,12 @@ int main(int argc, char* argv[])
 
     if (argCount < 2)
     {
-        std::cout << "Druk Language Compiler v1.0.0 (Modular Refactor)\n";
+        std::cout << "Druk Language Compiler " << DRUK_VERSION << "\n";
         std::cout << "\nUsage: druk [path]                    (Run script)\n";
         std::cout << "       druk --vm [path]                (Run with VM interpreter)\n";
         std::cout << "       druk compile [path] -o [exe]    (Compile to executable)\n";
 
-        druk::util::printUpdateNotice("v1.0.0");
+        druk::util::printUpdateNotice(DRUK_VERSION);
         return 0;
     }
 
@@ -286,7 +286,7 @@ int main(int argc, char* argv[])
         << "Bytecode VM is temporarily unavailable during strict IR refactor. LLVM not enabled.\n";
 #endif
 
-    druk::util::printUpdateNotice("v1.0.0");
+    druk::util::printUpdateNotice(DRUK_VERSION);
     return 0;
 
     /*

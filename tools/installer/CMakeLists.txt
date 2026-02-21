@@ -17,12 +17,17 @@ add_executable(druk-installer WIN32
     installer.rc
 )
 
-# Custom command to zip the compiler assets before building the installer
+# Custom command to zip the compiler assets
 add_custom_command(
-    TARGET druk-installer PRE_BUILD
+    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/payload.zip"
     COMMAND powershell -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/package.ps1" -SourceDir "${CMAKE_CURRENT_SOURCE_DIR}/../.." -DestZip "${CMAKE_CURRENT_SOURCE_DIR}/payload.zip"
-    COMMENT "Packaging compiler assets into payload.zip with correct directory structure"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../../build/druk.exe" "${CMAKE_CURRENT_SOURCE_DIR}/package.ps1"
+    COMMENT "Packaging compiler assets into payload.zip"
+    VERBATIM
 )
+
+# Reference the payload.zip as a source to ensure it's built
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/payload.zip" PROPERTIES GENERATED TRUE)
 
 target_include_directories(druk-installer PRIVATE
     include
